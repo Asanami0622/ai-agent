@@ -232,16 +232,45 @@ export default function Home() {
         onLoad={handleLive2DLoad}
       />
 
-      <canvas
-        ref={canvasRef}
+ {/* ★ キャンバスをdivで囲んで、背景画像を設定します！ */}
+      <div
         style={{
           width: '300px',
           height: '400px',
           marginBottom: '20px',
-          pointerEvents: 'none',
+          backgroundImage: 'url("/room.png")', // ★ ここに準備した画像のファイル名を書きます
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderRadius: '10px', // 角を少し丸くしてオシャレに
+          overflow: 'hidden',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)', // 少し影をつけるとリッチに見えます！
         }}
-      />
-
+      >
+        
+ {/* ★ キャンバスをdivで囲んで、背景画像を設定します！ */}
+      <div
+        style={{
+          width: '300px',
+          height: '400px',
+          marginBottom: '20px',
+          backgroundImage: 'url("/images.jpg")', // ★ ここに準備した画像のファイル名を書きます
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          borderRadius: '10px', // 角を少し丸くしてオシャレに
+          overflow: 'hidden',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)', // 少し影をつけるとリッチに見えます！
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+          }}
+        />
+      </div>
+      </div>
       <h2 style={{ marginBottom: '10px', color: '#333' }}>状態: {agentState}</h2>
 
       <div
