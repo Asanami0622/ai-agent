@@ -200,7 +200,7 @@ export default function Home() {
       const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
 
       // ★ モデルをキャンバスの中央に綺麗に配置し直す！
-      model.scale.set(0.25); 
+      model.scale.set(0.30); 
       model.anchor.set(0.5, 0.5); 
       model.position.set(750, 550); 
 
@@ -221,7 +221,7 @@ return (
         minHeight: '100vh',
         backgroundColor: '#f0f0f0',
         fontFamily: 'sans-serif',
-        padding: '20px',
+        padding: '10px', // スマホ用に余白を少し縮小
       }}
     >
       {/* 安定版のLive2D Core読み込み */}
@@ -231,12 +231,14 @@ return (
         onLoad={handleLive2DLoad}
       />
 
-      {/* ＝ メインコンテナ（お部屋とUIを重ねる基準枠） ＝ */}
+      {/* ＝ メインコンテナ（レスポンシブ対応） ＝ */}
       <div
         style={{
           position: 'relative',
-          width: '1000px',
-          height: '750px',
+          width: '100%', // ★ スマホでは画面幅いっぱいに
+          maxWidth: '1000px', // ★ PCなど大きい画面では上限750px
+          aspectRatio: '1 / 1', // ★ 正方形を維持（縦横比固定）
+          maxHeight: '90vh', // ★ スマホの画面縦からはみ出さないように制限
           backgroundImage: 'url("/o1080060814180422667.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -255,19 +257,19 @@ return (
           }}
         />
 
-        {/* ＝ 腰のあたりに重ねる操作パネル（中央揃え） ＝ */}
+        {/* ＝ 操作パネル ＝ */}
         <div
           style={{
             position: 'absolute',
-            bottom: '60px', // ★ 腰あたりの高さに調整（上下させたい時はこの数値を変更）
+            bottom: '20px', // ★ スマホで見やすいよう少し下寄りに配置
             left: '50%',
-            transform: 'translateX(-50%)', // ★ 画面横の中央に配置
-            width: '85%',
-            maxWidth: '500px',
+            transform: 'translateX(-50%)',
+            width: '90%',
+            maxWidth: '650px',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center', // ★ 中身要素をすべて中央寄せ
-            gap: '10px',
+            alignItems: 'center',
+            gap: '8px',
             zIndex: 10,
           }}
         >
@@ -276,13 +278,13 @@ return (
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.85)',
               backdropFilter: 'blur(5px)',
-              padding: '6px 16px',
+              padding: '4px 12px',
               borderRadius: '20px',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 'bold',
               color: '#333',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center', // ★ テキスト中央揃え
+              textAlign: 'center',
             }}
           >
             状態: {agentState}
@@ -292,17 +294,17 @@ return (
           <div
             style={{
               width: '100%',
-              padding: '10px 15px',
+              padding: '8px 12px',
               backgroundColor: 'rgba(255, 255, 255, 0.85)',
               backdropFilter: 'blur(5px)',
-              borderRadius: '12px',
+              borderRadius: '10px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               color: '#333',
-              textAlign: 'center', // ★ テキスト中央揃え
+              textAlign: 'center',
             }}
           >
-            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>あなた：</p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '500' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>あなた：</p>
+            <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '500' }}>
               {transcript || '（ボタンを押して話しかけてください）'}
             </p>
           </div>
@@ -311,20 +313,20 @@ return (
           <div
             style={{
               width: '100%',
-              padding: '12px 15px',
+              padding: '10px 12px',
               backgroundColor: 'rgba(232, 248, 245, 0.9)',
               backdropFilter: 'blur(5px)',
-              borderBottom: '3px solid #1abc9c', // 左線から下線へ変更（中央揃えのデザイン用）
-              borderRadius: '12px',
+              borderBottom: '3px solid #1abc9c',
+              borderRadius: '10px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               color: '#333',
-              textAlign: 'center', // ★ テキスト中央揃え
+              textAlign: 'center',
             }}
           >
-            <p style={{ margin: 0, fontSize: '12px', color: '#16a085', fontWeight: 'bold' }}>
+            <p style={{ margin: 0, fontSize: '11px', color: '#16a085', fontWeight: 'bold' }}>
               ひよりちゃんの返事：
             </p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '15px', lineHeight: '1.4', fontWeight: 'bold' }}>
+            <p style={{ margin: '2px 0 0 0', fontSize: '14px', lineHeight: '1.4', fontWeight: 'bold' }}>
               {aiReply || '（ここにAIのお返事が表示されます）'}
             </p>
           </div>
@@ -334,8 +336,8 @@ return (
             onClick={handleTalkButton}
             disabled={isThinking}
             style={{
-              padding: '10px 30px',
-              fontSize: '15px',
+              padding: '10px 24px',
+              fontSize: '14px',
               fontWeight: 'bold',
               color: '#fff',
               backgroundColor: isRecording ? '#e74c3c' : isThinking ? '#95a5a6' : '#333',
@@ -344,7 +346,6 @@ return (
               cursor: isThinking ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
               transition: 'all 0.3s ease',
-              marginTop: '2px',
             }}
           >
             {isRecording ? '録音を停止する' : isThinking ? '考え中...' : '話しかける'}
