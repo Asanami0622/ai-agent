@@ -16,7 +16,7 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
 
-  // VOICEVOXで音声合成して再生する処理（★口パク連動版！）
+  // VOICEVOXで音声合成して再生する処理（口パク連動版）
   const speakText = async (text: string) => {
     try {
       const speakerId = 3;
@@ -39,10 +39,10 @@ export default function Home() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
 
-      // === 🪄 ここから：音声を分析して口パクさせる魔法のコード ===
+      // 音声を分析して口パクさせる処理
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
-      
+
       const source = audioContext.createMediaElementSource(audio);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
@@ -60,11 +60,8 @@ export default function Home() {
           sum += dataArray[i];
         }
         const average = sum / dataArray.length;
-
-        // 音量を 0.0 〜 1.0 の間の数値に変換
         const volume = Math.min(average / 30, 1.0);
 
-        // ひよりちゃんの「口の縦の開き」パラメータに音量を注入
         modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', volume);
 
         requestAnimationFrame(updateMouth);
@@ -80,7 +77,6 @@ export default function Home() {
           modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
         }
       };
-      // ========================================================
 
       audio.play();
     } catch (error) {
@@ -180,29 +176,51 @@ export default function Home() {
     }
   };
 
-  // Live2D の準備と描画を行う処理
+  // Live2D の準備と描画を行う処理（レスポンシブ・スマホ縦画面最適化）
   const handleLive2DLoad = async () => {
     try {
       const PIXI = await import('pixi.js');
       (window as any).PIXI = PIXI;
-      // ★ 古いエンジンを探さないように「/cubism4」を明記
       const { Live2DModel } = await import('pixi-live2d-display/cubism4');
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
       const app = new PIXI.Application({
         view: canvasRef.current as HTMLCanvasElement,
         autoStart: true,
         backgroundAlpha: 0,
-        width: 1500,
-        height: 750,
+        width: width,
+        height: height,
+        resizeTo: window, // 画面リサイズに追従
       });
 
-      // ★ ひよりちゃん（Pro版）の設計図を読み込む
       const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
 
-      // ★ モデルをキャンバスの中央に綺麗に配置し直す！
-      model.scale.set(0.30); 
-      model.anchor.set(0.5, 0.5); 
-      model.position.set(750, 550); 
+      model.anchor.set(0.5, 0.5);
+
+      // 画面の向きや大きさに合わせてスケールと位置を最適計算する関数
+      const resizeModel = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        const isLandscape = w > h;
+
+        if (isLandscape) {
+          // PC・横画面：膝上〜頭までが画面に収まる絶妙な大きさと位置
+          const scale = (h / 1000) * 0.40; 
+          model.scale.set(scale);
+          model.position.set(w / 2, h * 0.75);
+        } else {
+          // スマホ・縦画面：膝上〜頭まで収める設定
+          const scale = (h / 1000) * 0.85; 
+          model.scale.set(scale);
+          model.position.set(w / 2, h * 0.60);
+        }
+      };
+
+      resizeModel();
+      window.addEventListener('resize', resizeModel);
 
       app.stage.addChild(model as any);
       modelRef.current = model;
@@ -212,7 +230,7 @@ export default function Home() {
     }
   };
 
-return (
+  return (
     <>
       {/* 安定版のLive2D Core読み込み */}
       <Script
@@ -224,16 +242,16 @@ return (
       {/* ＝＝＝ 画面全体のコンテナ（フルスクリーン） ＝＝＝ */}
       <div
         style={{
-          position: 'fixed', // ★ 画面に固定
+          position: 'fixed',
           top: 0,
           left: 0,
-          width: '100vw', // ★ 画面の横幅いっぱい
-          height: '100vh', // ★ 画面の縦幅いっぱい
-          overflow: 'hidden', // ★ はみ出し禁止
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
           fontFamily: 'sans-serif',
         }}
       >
-        {/* 背景画像（画面全体を覆う） */}
+        {/* 背景画像 */}
         <div
           style={{
             position: 'absolute',
@@ -242,55 +260,58 @@ return (
             width: '100%',
             height: '100%',
             backgroundImage: 'url("/o1080060814180422667.jpg")',
-            backgroundSize: 'cover', // ★ 画像を画面いっぱいに広げる（比率は維持）
-            backgroundPosition: 'center', // ★ 中央合わせ
-            zIndex: -1, // ★ 最背面に配置
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            zIndex: -1,
           }}
         />
 
-        {/* ＝＝＝ Live2D キャンバスエリア ＝＝＝ */}
-        <div
+        {/* ＝ Live2D キャンバス ＝ */}
+        <canvas
+          ref={canvasRef}
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            display: 'flex',
-            justifyContent: 'center', // ★ 横中央合わせ
-            alignItems: 'center', // ★ 縦中央合わせ
+            pointerEvents: 'none',
+            zIndex: 1,
           }}
-        >
-          {/* Live2D キャンバス */}
-          <canvas
-            ref={canvasRef}
-            style={{
-              // ★ キャンバス自体はアスペクト比（例：750x750の正方形）を維持しつつ、
-              // ★ 画面の縦または横の小さい方に合わせてフィットさせる
-              maxWidth: '100%',
-              maxHeight: '100%',
-              pointerEvents: 'none',
-              zIndex: 1, // ★ 背景より前に配置
-            }}
-          />
-        </div>
+        />
 
-        {/* ＝＝＝ 操作パネル（画面下部に配置） ＝＝＝ */}
+        {/* ＝ 操作パネル（画面下部・腰付近に配置） ＝ */}
         <div
           style={{
             position: 'absolute',
-            bottom: '20px', // 下からの位置
+            bottom: '20px',
             left: '50%',
-            transform: 'translateX(-50%)', // 中央寄せ
-            width: '90%', // スマホ画面での幅
-            maxWidth: '500px', // PCなどでの最大幅
+            transform: 'translateX(-50%)',
+            width: '92%',
+            maxWidth: '480px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '8px',
-            zIndex: 10, // ★ Live2Dキャンバスより前に配置
+            zIndex: 10,
           }}
         >
+          {/* 状態表示 */}
+          <div
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(5px)',
+              padding: '4px 14px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: '#333',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
+          >
+            状態: {agentState}
+          </div>
+
           {/* あなたの発言 */}
           <div
             style={{
@@ -337,7 +358,7 @@ return (
             onClick={handleTalkButton}
             disabled={isThinking}
             style={{
-              width: '100%', // スマホでのタップしやすさのため横幅いっぱいに
+              width: '100%',
               padding: '12px 0',
               fontSize: '16px',
               fontWeight: 'bold',
