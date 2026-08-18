@@ -200,7 +200,7 @@ export default function Home() {
       const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
 
       // ★ モデルをキャンバスの中央に綺麗に配置し直す！
-      model.scale.set(0.32); 
+      model.scale.set(0.25); 
       model.anchor.set(0.5, 0.5); 
       model.position.set(750, 550); 
 
@@ -212,14 +212,12 @@ export default function Home() {
     }
   };
 
- return (
+return (
     <div
       style={{
         display: 'flex',
-        flexDirection: 'row', // ★ ここを 'column' から 'row' に変更して横並びに！
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '40px', // ★ 左のお部屋と右の操作パネルの間に 40px の隙間を作ります
         minHeight: '100vh',
         backgroundColor: '#f0f0f0',
         fontFamily: 'sans-serif',
@@ -233,19 +231,21 @@ export default function Home() {
         onLoad={handleLive2DLoad}
       />
 
-      {/* ＝＝＝ 左側：ひよりちゃんのお部屋 ＝＝＝ */}
+      {/* ＝ メインコンテナ（お部屋とUIを重ねる基準枠） ＝ */}
       <div
         style={{
-          width: '750px', // 広げたサイズ
-          height: '750px', // 広げたサイズ
+          position: 'relative',
+          width: '1000px',
+          height: '750px',
           backgroundImage: 'url("/o1080060814180422667.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          borderRadius: '10px',
+          borderRadius: '15px',
           overflow: 'hidden',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
         }}
       >
+        {/* Live2D キャンバス */}
         <canvas
           ref={canvasRef}
           style={{
@@ -254,76 +254,102 @@ export default function Home() {
             pointerEvents: 'none',
           }}
         />
-      </div>
 
-      {/* ＝＝＝ 右側：会話パネルと操作ボタン ＝＝＝ */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          maxWidth: '400px', // 右側のパネルの幅
-        }}
-      >
-        <h2 style={{ marginBottom: '15px', color: '#333' }}>状態: {agentState}</h2>
-
+        {/* ＝ 腰のあたりに重ねる操作パネル（中央揃え） ＝ */}
         <div
           style={{
-            width: '100%',
-            minHeight: '50px',
-            padding: '15px',
-            backgroundColor: '#fff',
-            borderRadius: '10px',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-            marginBottom: '15px',
-            color: '#333',
+            position: 'absolute',
+            bottom: '60px', // ★ 腰あたりの高さに調整（上下させたい時はこの数値を変更）
+            left: '50%',
+            transform: 'translateX(-50%)', // ★ 画面横の中央に配置
+            width: '85%',
+            maxWidth: '500px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center', // ★ 中身要素をすべて中央寄せ
+            gap: '10px',
+            zIndex: 10,
           }}
         >
-          <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>あなた：</p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '16px' }}>
-            {transcript || '（ボタンを押して話しかけてください）'}
-          </p>
-        </div>
+          {/* 状態表示 */}
+          <div
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(5px)',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: 'bold',
+              color: '#333',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              textAlign: 'center', // ★ テキスト中央揃え
+            }}
+          >
+            状態: {agentState}
+          </div>
 
-        <div
-          style={{
-            width: '100%',
-            minHeight: '60px',
-            padding: '15px',
-            backgroundColor: '#e8f8f5',
-            borderLeft: '5px solid #1abc9c',
-            borderRadius: '10px',
-            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-            marginBottom: '20px',
-            color: '#333',
-          }}
-        >
-          <p style={{ margin: 0, fontSize: '14px', color: '#16a085', fontWeight: 'bold' }}>
-            ひよりちゃんの返事：
-          </p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '16px', lineHeight: '1.5' }}>
-            {aiReply || '（ここにAIのお返事が表示されます）'}
-          </p>
-        </div>
+          {/* あなたの発言 */}
+          <div
+            style={{
+              width: '100%',
+              padding: '10px 15px',
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(5px)',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: '#333',
+              textAlign: 'center', // ★ テキスト中央揃え
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>あなた：</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '500' }}>
+              {transcript || '（ボタンを押して話しかけてください）'}
+            </p>
+          </div>
 
-        <button
-          onClick={handleTalkButton}
-          disabled={isThinking}
-          style={{
-            padding: '15px 30px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: '#fff',
-            backgroundColor: isRecording ? '#e74c3c' : isThinking ? '#95a5a6' : '#333',
-            border: 'none',
-            borderRadius: '30px',
-            cursor: isThinking ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            transition: 'background-color 0.3s ease',
-          }}
-        >
-          {isRecording ? '録音を停止する' : isThinking ? '考え中...' : '話しかける'}
-        </button>
+          {/* ひよりちゃんの返事 */}
+          <div
+            style={{
+              width: '100%',
+              padding: '12px 15px',
+              backgroundColor: 'rgba(232, 248, 245, 0.9)',
+              backdropFilter: 'blur(5px)',
+              borderBottom: '3px solid #1abc9c', // 左線から下線へ変更（中央揃えのデザイン用）
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              color: '#333',
+              textAlign: 'center', // ★ テキスト中央揃え
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '12px', color: '#16a085', fontWeight: 'bold' }}>
+              ひよりちゃんの返事：
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '15px', lineHeight: '1.4', fontWeight: 'bold' }}>
+              {aiReply || '（ここにAIのお返事が表示されます）'}
+            </p>
+          </div>
+
+          {/* 話しかけるボタン */}
+          <button
+            onClick={handleTalkButton}
+            disabled={isThinking}
+            style={{
+              padding: '10px 30px',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              color: '#fff',
+              backgroundColor: isRecording ? '#e74c3c' : isThinking ? '#95a5a6' : '#333',
+              border: 'none',
+              borderRadius: '25px',
+              cursor: isThinking ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+              transition: 'all 0.3s ease',
+              marginTop: '2px',
+            }}
+          >
+            {isRecording ? '録音を停止する' : isThinking ? '考え中...' : '話しかける'}
+          </button>
+        </div>
       </div>
     </div>
   );
