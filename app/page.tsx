@@ -213,17 +213,7 @@ export default function Home() {
   };
 
 return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f0f0f0',
-        fontFamily: 'sans-serif',
-        padding: '10px', // スマホ用に余白を少し縮小
-      }}
-    >
+    <>
       {/* 安定版のLive2D Core読み込み */}
       <Script
         src="https://cdn.jsdelivr.net/npm/live2dcubismcore@1.0.2/live2dcubismcore.min.js"
@@ -231,65 +221,76 @@ return (
         onLoad={handleLive2DLoad}
       />
 
-      {/* ＝ メインコンテナ（レスポンシブ対応） ＝ */}
+      {/* ＝＝＝ 画面全体のコンテナ（フルスクリーン） ＝＝＝ */}
       <div
         style={{
-          position: 'relative',
-          width: '100%', // ★ スマホでは画面幅いっぱいに
-          maxWidth: '1000px', // ★ PCなど大きい画面では上限750px
-          aspectRatio: '1 / 1', // ★ 正方形を維持（縦横比固定）
-          maxHeight: '90vh', // ★ スマホの画面縦からはみ出さないように制限
-          backgroundImage: 'url("/o1080060814180422667.jpg")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          borderRadius: '15px',
-          overflow: 'hidden',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.15)',
+          position: 'fixed', // ★ 画面に固定
+          top: 0,
+          left: 0,
+          width: '100vw', // ★ 画面の横幅いっぱい
+          height: '100vh', // ★ 画面の縦幅いっぱい
+          overflow: 'hidden', // ★ はみ出し禁止
+          fontFamily: 'sans-serif',
         }}
       >
-        {/* Live2D キャンバス */}
-        <canvas
-          ref={canvasRef}
-          style={{
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* ＝ 操作パネル ＝ */}
+        {/* 背景画像（画面全体を覆う） */}
         <div
           style={{
             position: 'absolute',
-            bottom: '20px', // ★ スマホで見やすいよう少し下寄りに配置
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: 'url("/o1080060814180422667.jpg")',
+            backgroundSize: 'cover', // ★ 画像を画面いっぱいに広げる（比率は維持）
+            backgroundPosition: 'center', // ★ 中央合わせ
+            zIndex: -1, // ★ 最背面に配置
+          }}
+        />
+
+        {/* ＝＝＝ Live2D キャンバスエリア ＝＝＝ */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center', // ★ 横中央合わせ
+            alignItems: 'center', // ★ 縦中央合わせ
+          }}
+        >
+          {/* Live2D キャンバス */}
+          <canvas
+            ref={canvasRef}
+            style={{
+              // ★ キャンバス自体はアスペクト比（例：750x750の正方形）を維持しつつ、
+              // ★ 画面の縦または横の小さい方に合わせてフィットさせる
+              maxWidth: '100%',
+              maxHeight: '100%',
+              pointerEvents: 'none',
+              zIndex: 1, // ★ 背景より前に配置
+            }}
+          />
+        </div>
+
+        {/* ＝＝＝ 操作パネル（画面下部に配置） ＝＝＝ */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px', // 下からの位置
             left: '50%',
-            transform: 'translateX(-50%)',
-            width: '90%',
-            maxWidth: '650px',
+            transform: 'translateX(-50%)', // 中央寄せ
+            width: '90%', // スマホ画面での幅
+            maxWidth: '500px', // PCなどでの最大幅
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '8px',
-            zIndex: 10,
+            zIndex: 10, // ★ Live2Dキャンバスより前に配置
           }}
         >
-          {/* 状態表示 */}
-          <div
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.85)',
-              backdropFilter: 'blur(5px)',
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              color: '#333',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center',
-            }}
-          >
-            状態: {agentState}
-          </div>
-
           {/* あなたの発言 */}
           <div
             style={{
@@ -297,15 +298,15 @@ return (
               padding: '8px 12px',
               backgroundColor: 'rgba(255, 255, 255, 0.85)',
               backdropFilter: 'blur(5px)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               color: '#333',
               textAlign: 'center',
             }}
           >
             <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>あなた：</p>
-            <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '500' }}>
-              {transcript || '（ボタンを押して話しかけてください）'}
+            <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '500', lineHeight: '1.2' }}>
+              {transcript || '（話しかけてください）'}
             </p>
           </div>
 
@@ -317,7 +318,7 @@ return (
               backgroundColor: 'rgba(232, 248, 245, 0.9)',
               backdropFilter: 'blur(5px)',
               borderBottom: '3px solid #1abc9c',
-              borderRadius: '10px',
+              borderRadius: '12px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               color: '#333',
               textAlign: 'center',
@@ -326,8 +327,8 @@ return (
             <p style={{ margin: 0, fontSize: '11px', color: '#16a085', fontWeight: 'bold' }}>
               ひよりちゃんの返事：
             </p>
-            <p style={{ margin: '2px 0 0 0', fontSize: '14px', lineHeight: '1.4', fontWeight: 'bold' }}>
-              {aiReply || '（ここにAIのお返事が表示されます）'}
+            <p style={{ margin: '2px 0 0 0', fontSize: '14px', lineHeight: '1.3', fontWeight: 'bold' }}>
+              {aiReply || '（AIのお返事）'}
             </p>
           </div>
 
@@ -336,13 +337,14 @@ return (
             onClick={handleTalkButton}
             disabled={isThinking}
             style={{
-              padding: '10px 24px',
-              fontSize: '14px',
+              width: '100%', // スマホでのタップしやすさのため横幅いっぱいに
+              padding: '12px 0',
+              fontSize: '16px',
               fontWeight: 'bold',
               color: '#fff',
               backgroundColor: isRecording ? '#e74c3c' : isThinking ? '#95a5a6' : '#333',
               border: 'none',
-              borderRadius: '25px',
+              borderRadius: '30px',
               cursor: isThinking ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
               transition: 'all 0.3s ease',
@@ -352,6 +354,6 @@ return (
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
