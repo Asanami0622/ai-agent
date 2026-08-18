@@ -193,16 +193,16 @@ export default function Home() {
         autoStart: true,
         backgroundAlpha: 0,
         width: 1500,
-        height: 600,
+        height: 750,
       });
 
       // ★ ひよりちゃん（Pro版）の設計図を読み込む
       const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
 
       // ★ モデルをキャンバスの中央に綺麗に配置し直す！
-      model.scale.set(0.27); 
+      model.scale.set(0.32); 
       model.anchor.set(0.5, 0.5); 
-      model.position.set(750, 400); 
+      model.position.set(750, 550); 
 
       app.stage.addChild(model as any);
       modelRef.current = model;
@@ -236,8 +236,8 @@ export default function Home() {
       {/* ＝＝＝ 左側：ひよりちゃんのお部屋 ＝＝＝ */}
       <div
         style={{
-          width: '600px', // 広げたサイズ
-          height: '600px', // 広げたサイズ
+          width: '750px', // 広げたサイズ
+          height: '750px', // 広げたサイズ
           backgroundImage: 'url("/o1080060814180422667.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
