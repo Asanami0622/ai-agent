@@ -165,7 +165,7 @@ export default function Home() {
           model.position.set(w / 2, h * 0.75);
         } else {
           // スマホ・縦画面：横幅(w)を基準にしてドーンと大きく表示！
-          const scale = (w / 1000) * 0.40; 
+          const scale = (w / 1000) * 0.60; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.58);
         }
