@@ -22,7 +22,6 @@ export default function Home() {
   // Azure Speech Service で音声合成して再生する処理（口パク連動版）
   const speakText = async (text: string) => {
     try {
-      // 自分で作ったAzure呼び出し用のAPIにテキストを送る
       const ttsRes = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +36,6 @@ export default function Home() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
 
-      // --- ここから下は「口パク」の仕組み ---
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
       const source = audioContext.createMediaElementSource(audio);
@@ -68,7 +66,7 @@ export default function Home() {
         if (modelRef.current) {
           modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
         }
-        URL.revokeObjectURL(audioUrl); // メモリの掃除
+        URL.revokeObjectURL(audioUrl);
       };
 
       audio.play();
@@ -115,10 +113,9 @@ export default function Home() {
     if (!inputText.trim() || isThinking) return;
 
     const messageToSend = inputText;
-    setInputText(''); // 送信したら入力欄を空に戻す
-    setTranscript(messageToSend); // 画面の「あなた：」の表示を更新
+    setInputText('');
+    setTranscript(messageToSend);
 
-    // AIの脳みそにテキストを送る
     await askBrain(messageToSend);
   };
 
@@ -180,7 +177,7 @@ export default function Home() {
     }
   };
 
-  // Live2D の準備と描画を行う処理（レスポンシブ・スマホ縦画面最適化）
+  // Live2D の準備と描画を行う処理
   const handleLive2DLoad = async () => {
     try {
       const PIXI = await import('pixi.js');
@@ -196,14 +193,13 @@ export default function Home() {
         backgroundAlpha: 0,
         width: width,
         height: height,
-        resizeTo: window, // 画面リサイズに追従
+        resizeTo: window,
       });
 
       const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
 
       model.anchor.set(0.5, 0.5);
 
-      // 画面の向きや大きさに合わせてスケールと位置を最適計算する関数
       const resizeModel = () => {
         const w = window.innerWidth;
         const h = window.innerHeight;
@@ -211,15 +207,13 @@ export default function Home() {
         const isLandscape = w > h;
 
         if (isLandscape) {
-          // PC・横画面：膝上〜頭までが収まる設定
           const scale = (h / 1000) * 0.40; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
         } else {
-          // スマホ・縦画面：位置をやや上(h * 0.40)にしてパネルと綺麗に並ぶように調整
-          const scale = (w / 1000) * 0.55; 
+          const scale = (w / 1000) * 0.60; 
           model.scale.set(scale);
-          model.position.set(w / 2, h * 0.40);
+          model.position.set(w / 2, h * 0.58);
         }
       };
 
@@ -236,14 +230,12 @@ export default function Home() {
 
   return (
     <>
-      {/* 安定版のLive2D Core読み込み */}
       <Script
         src="https://cdn.jsdelivr.net/npm/live2dcubismcore@1.0.2/live2dcubismcore.min.js"
         strategy="afterInteractive"
         onLoad={handleLive2DLoad}
       />
 
-      {/* ＝＝＝ 画面全体のコンテナ（フルスクリーン） ＝＝＝ */}
       <div
         style={{
           position: 'fixed',
@@ -270,7 +262,7 @@ export default function Home() {
           }}
         />
 
-        {/* ＝ ★ 履歴表示ボタン（画面右上に配置） ＝ */}
+        {/* 履歴表示ボタン */}
         <button
           onClick={() => setShowHistoryModal(true)}
           style={{
@@ -296,7 +288,7 @@ export default function Home() {
           📜 会話履歴 ({history.length / 2}件)
         </button>
 
-        {/* ＝ Live2D キャンバス ＝ */}
+        {/* Live2D キャンバス */}
         <canvas
           ref={canvasRef}
           style={{
@@ -310,7 +302,7 @@ export default function Home() {
           }}
         />
 
-        {/* ＝ 操作パネル ＝ */}
+        {/* 操作パネル本体 */}
         <div className="control-panel">
           {/* 状態表示 */}
           <div
@@ -370,7 +362,7 @@ export default function Home() {
           </div>
 
           {/* テキスト入力フォーム */}
-          <div style={{ display: 'flex', width: '100%', gap: '8px', marginTop: '4px' }}>
+          <div className="input-group">
             <input
               type="text"
               value={inputText}
@@ -428,7 +420,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* ＝ ★ 会話履歴モーダル ＝ */}
+        {/* 会話履歴モーダル */}
         {showHistoryModal && (
           <div
             style={{
@@ -539,31 +531,45 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* CSSスタイル：スマホ時のみパネルを上に移動 */}
-        <style jsx>{`
-          .control-panel {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 92%;
-            max-width: 480px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            z-index: 10;
-          }
-
-          /* スマホ等（横幅768px以下）の場合、下から 80px 浮かせる */
-          @media (max-width: 768px) {
-            .control-panel {
-              bottom: 80px;
-            }
-          }
-        `}</style>
       </div>
+
+      {/* ＝ ★ 画面向きに完璧対応するスタイル ＝ */}
+      <style jsx>{`
+        /* 全画面で共通のスタイル */
+        .control-panel {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 92%;
+          max-width: 480px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          z-index: 10;
+        }
+
+        .input-group {
+          display: flex;
+          width: 100%;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        /* ① 横画面（PCまたはスマホ横持ち）のときの配置 */
+        @media (orientation: landscape) {
+          .control-panel {
+            bottom: 20px !important; /* 画面の一番下にすっきり収める */
+          }
+        }
+
+        /* ② 縦画面（スマホ縦持ち）のときだけの配置 */
+        @media (orientation: portrait) {
+          .control-panel {
+            bottom: 120px !important; /* ★ここを動かすと縦画面のときだけ一式上に上がります */
+          }
+        }
+      `}</style>
     </>
   );
 }
