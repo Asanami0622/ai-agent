@@ -262,7 +262,7 @@ export default function Home() {
         <div
           style={{
             position: 'absolute',
-            bottom: '20px',
+            bottom: typeof window !== 'undefined' && window.innerWidth < window.innerHeight ? '60px' : '20px',
             left: '50%',
             transform: 'translateX(-50%)',
             width: '92%',
