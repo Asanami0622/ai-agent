@@ -9,9 +9,8 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const recognitionRef = useRef<any>(null);
-
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
-
+ const [inputText, setInputText] = useState('');
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
@@ -117,7 +116,17 @@ export default function Home() {
       setIsThinking(false);
     }
   };
+// テキストメッセージを送信する処理
+  const handleTextSubmit = async () => {
+    if (!inputText.trim() || isThinking) return;
 
+    const messageToSend = inputText;
+    setInputText(''); // 送信したら入力欄を空に戻す
+    setTranscript(messageToSend); // 画面の「あなた：」の表示を更新
+
+    // AIの脳みそにテキストを送る
+    await askBrain(messageToSend);
+  };
   // マイクでの音声認識を開始・停止する処理
   const handleTalkButton = () => {
     if (isRecording) {
@@ -207,15 +216,17 @@ export default function Home() {
         const isLandscape = w > h;
 
         if (isLandscape) {
-          // PC・横画面：膝上〜頭までが画面に収まる絶妙な大きさと位置
+          // PC・横画面：膝上〜頭までが収まる設定
           const scale = (h / 1000) * 0.40; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
         } else {
-          // スマホ・縦画面：膝上〜頭まで収める設定
-          const scale = (h / 1000) * 0.85; 
+          // スマホ・縦画面：横幅(w)を基準にしてドーンと大きく表示！
+          // 画面幅に対してキャラクターがしっかり見やすい大きさに拡大
+          const scale = (w / 1000) * 0.40; 
           model.scale.set(scale);
-          model.position.set(w / 2, h * 0.60);
+          // 位置も少し下げて太もも付近から上が入るように配置
+          model.position.set(w / 2, h * 0.58);
         }
       };
 
@@ -352,7 +363,24 @@ export default function Home() {
               {aiReply || '（AIのお返事）'}
             </p>
           </div>
-
+<div style={{ display: 'flex', width: '100%', gap: '8px', marginTop: '4px' }}>
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+              placeholder="メッセージを入力..."
+              disabled={isThinking}
+              style={{ flex: 1, padding: '12px', borderRadius: '30px', border: 'none', fontSize: '14px', outline: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={isThinking || !inputText.trim()}
+              style={{ padding: '0 20px', backgroundColor: isThinking || !inputText.trim() ? '#bdc3c7' : '#3498db', color: '#fff', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isThinking || !inputText.trim() ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              送信
+            </button>
+          </div>
           {/* 話しかけるボタン */}
           <button
             onClick={handleTalkButton}
