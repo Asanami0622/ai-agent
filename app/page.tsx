@@ -10,16 +10,21 @@ export default function Home() {
   const [isThinking, setIsThinking] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
- const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState('');
+
+  // ★ 履歴ポップアップ（モーダル）の開閉フラグ
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
 
- // 音声再生はお休み中（テキストチャットのみ）
+  // 音声再生はお休み中（テキストチャットのみ）
   const speakText = (text: string) => {
     console.log("AIの返答:", text);
     // 今は声を出さないので中身は空でOK！
   };
+
   // AIのAPI（脳）へメッセージを送る処理
   const askBrain = async (text: string) => {
     if (!text) return;
@@ -52,7 +57,8 @@ export default function Home() {
       setIsThinking(false);
     }
   };
-// テキストメッセージを送信する処理
+
+  // テキストメッセージを送信する処理
   const handleTextSubmit = async () => {
     if (!inputText.trim() || isThinking) return;
 
@@ -63,6 +69,7 @@ export default function Home() {
     // AIの脳みそにテキストを送る
     await askBrain(messageToSend);
   };
+
   // マイクでの音声認識を開始・停止する処理
   const handleTalkButton = () => {
     if (isRecording) {
@@ -158,10 +165,8 @@ export default function Home() {
           model.position.set(w / 2, h * 0.75);
         } else {
           // スマホ・縦画面：横幅(w)を基準にしてドーンと大きく表示！
-          // 画面幅に対してキャラクターがしっかり見やすい大きさに拡大
           const scale = (w / 1000) * 0.40; 
           model.scale.set(scale);
-          // 位置も少し下げて太もも付近から上が入るように配置
           model.position.set(w / 2, h * 0.58);
         }
       };
@@ -212,6 +217,32 @@ export default function Home() {
             zIndex: -1,
           }}
         />
+
+        {/* ＝ ★ 履歴表示ボタン（画面右上に配置） ＝ */}
+        <button
+          onClick={() => setShowHistoryModal(true)}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(5px)',
+            border: 'none',
+            borderRadius: '20px',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            color: '#333',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          📜 会話履歴 ({history.length / 2}件)
+        </button>
 
         {/* ＝ Live2D キャンバス ＝ */}
         <canvas
@@ -299,7 +330,9 @@ export default function Home() {
               {aiReply || '（AIのお返事）'}
             </p>
           </div>
-<div style={{ display: 'flex', width: '100%', gap: '8px', marginTop: '4px' }}>
+
+          {/* テキスト入力フォーム */}
+          <div style={{ display: 'flex', width: '100%', gap: '8px', marginTop: '4px' }}>
             <input
               type="text"
               value={inputText}
@@ -307,16 +340,34 @@ export default function Home() {
               onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
               placeholder="メッセージを入力..."
               disabled={isThinking}
-              style={{ flex: 1, padding: '12px', borderRadius: '30px', border: 'none', fontSize: '14px', outline: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '30px',
+                border: 'none',
+                fontSize: '14px',
+                outline: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
             />
             <button
               onClick={handleTextSubmit}
               disabled={isThinking || !inputText.trim()}
-              style={{ padding: '0 20px', backgroundColor: isThinking || !inputText.trim() ? '#bdc3c7' : '#3498db', color: '#fff', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isThinking || !inputText.trim() ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+              style={{
+                padding: '0 20px',
+                backgroundColor: isThinking || !inputText.trim() ? '#bdc3c7' : '#3498db',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '30px',
+                fontWeight: 'bold',
+                cursor: isThinking || !inputText.trim() ? 'not-allowed' : 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
             >
               送信
             </button>
           </div>
+
           {/* 話しかけるボタン */}
           <button
             onClick={handleTalkButton}
@@ -338,6 +389,120 @@ export default function Home() {
             {isRecording ? '録音を停止する' : isThinking ? '考え中...' : '話しかける'}
           </button>
         </div>
+
+        {/* ＝ ★ 会話履歴モーダル（モーダル表示時のみ出現） ＝ */}
+        {showHistoryModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '20px',
+            }}
+            onClick={() => setShowHistoryModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()} // 内側タップで閉じないように保護
+              style={{
+                width: '100%',
+                maxWidth: '500px',
+                maxHeight: '80vh',
+                backgroundColor: '#fff',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* モーダルヘッダー */}
+              <div
+                style={{
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #eee',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: '#f8f9fa',
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>📜 会話履歴</h3>
+                <button
+                  onClick={() => setShowHistoryModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#888',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* モーダル内容（メッセージ一覧） */}
+              <div
+                style={{
+                  padding: '16px',
+                  overflowY: 'auto',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                {history.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#999', margin: '30px 0' }}>
+                    まだ会話の履歴がありません。
+                  </p>
+                ) : (
+                  history.map((item, index) => {
+                    const isUser = item.role === 'user';
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: isUser ? 'flex-end' : 'flex-start',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', color: '#888', marginBottom: '2px' }}>
+                          {isUser ? 'あなた' : 'ひよりちゃん'}
+                        </span>
+                        <div
+                          style={{
+                            maxWidth: '80%',
+                            padding: '10px 14px',
+                            borderRadius: '16px',
+                            backgroundColor: isUser ? '#3498db' : '#e8f8f5',
+                            color: isUser ? '#fff' : '#2c3e50',
+                            borderBottomRightRadius: isUser ? '2px' : '16px',
+                            borderBottomLeftRadius: isUser ? '16px' : '2px',
+                            fontSize: '14px',
+                            lineHeight: '1.4',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                          }}
+                        >
+                          {item.text}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
