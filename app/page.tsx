@@ -207,15 +207,17 @@ export default function Home() {
         const isLandscape = w > h;
 
         if (isLandscape) {
-          // PC・横画面：膝上〜頭までが画面に収まる絶妙な大きさと位置
+          // PC・横画面：膝上〜頭までが収まる設定
           const scale = (h / 1000) * 0.40; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
         } else {
-          // スマホ・縦画面：膝上〜頭まで収める設定
-          const scale = (h / 1000) * 0.85; 
+          // スマホ・縦画面：横幅(w)を基準にしてドーンと大きく表示！
+          // 画面幅に対してキャラクターがしっかり見やすい大きさに拡大
+          const scale = (w / 1000) * 0.40; 
           model.scale.set(scale);
-          model.position.set(w / 2, h * 0.60);
+          // 位置も少し下げて太もも付近から上が入るように配置
+          model.position.set(w / 2, h * 0.58);
         }
       };
 
