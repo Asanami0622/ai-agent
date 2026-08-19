@@ -9,82 +9,17 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const recognitionRef = useRef<any>(null);
-
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
-
+ const [inputText, setInputText] = useState('');
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
 
-  // VOICEVOXで音声合成して再生する処理（口パク連動版）
-  const speakText = async (text: string) => {
-    try {
-      const speakerId = 3;
-      const queryRes = await fetch(
-        `http://localhost:50021/audio_query?text=${encodeURIComponent(text)}&speaker=${speakerId}`,
-        { method: 'POST' }
-      );
-      const queryData = await queryRes.json();
-
-      const synthesisRes = await fetch(
-        `http://localhost:50021/synthesis?speaker=${speakerId}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(queryData),
-        }
-      );
-      const audioBlob = await synthesisRes.blob();
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-
-      // 音声を分析して口パクさせる処理
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      const audioContext = new AudioContext();
-
-      const source = audioContext.createMediaElementSource(audio);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      const updateMouth = () => {
-        if (audio.paused || audio.ended || !modelRef.current) return;
-
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        const average = sum / dataArray.length;
-        const volume = Math.min(average / 30, 1.0);
-
-        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', volume);
-
-        requestAnimationFrame(updateMouth);
-      };
-
-      audio.onplay = () => {
-        audioContext.resume();
-        updateMouth();
-      };
-
-      audio.onended = () => {
-        if (modelRef.current) {
-          modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
-        }
-      };
-
-      audio.play();
-    } catch (error) {
-      console.error('VOICEVOXエラー:', error);
-      alert('VOICEVOXが起動しているか確認してね！');
-    }
+ // 音声再生はお休み中（テキストチャットのみ）
+  const speakText = (text: string) => {
+    console.log("AIの返答:", text);
+    // 今は声を出さないので中身は空でOK！
   };
-
   // AIのAPI（脳）へメッセージを送る処理
   const askBrain = async (text: string) => {
     if (!text) return;
@@ -117,7 +52,17 @@ export default function Home() {
       setIsThinking(false);
     }
   };
+// テキストメッセージを送信する処理
+  const handleTextSubmit = async () => {
+    if (!inputText.trim() || isThinking) return;
 
+    const messageToSend = inputText;
+    setInputText(''); // 送信したら入力欄を空に戻す
+    setTranscript(messageToSend); // 画面の「あなた：」の表示を更新
+
+    // AIの脳みそにテキストを送る
+    await askBrain(messageToSend);
+  };
   // マイクでの音声認識を開始・停止する処理
   const handleTalkButton = () => {
     if (isRecording) {
@@ -354,7 +299,24 @@ export default function Home() {
               {aiReply || '（AIのお返事）'}
             </p>
           </div>
-
+<div style={{ display: 'flex', width: '100%', gap: '8px', marginTop: '4px' }}>
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+              placeholder="メッセージを入力..."
+              disabled={isThinking}
+              style={{ flex: 1, padding: '12px', borderRadius: '30px', border: 'none', fontSize: '14px', outline: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={isThinking || !inputText.trim()}
+              style={{ padding: '0 20px', backgroundColor: isThinking || !inputText.trim() ? '#bdc3c7' : '#3498db', color: '#fff', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isThinking || !inputText.trim() ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              送信
+            </button>
+          </div>
           {/* 話しかけるボタン */}
           <button
             onClick={handleTalkButton}
