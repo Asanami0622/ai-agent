@@ -37,7 +37,7 @@ export default function Home() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
 
-      // --- ここから下はVOICEVOXの時と同じ「口パク」の仕組み ---
+      // --- ここから下は「口パク」の仕組み ---
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
       const source = audioContext.createMediaElementSource(audio);
@@ -216,10 +216,10 @@ export default function Home() {
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
         } else {
-          // スマホ・縦画面：横幅(w)を基準にしてドーンと大きく表示！
-          const scale = (w / 1000) * 0.60; 
+          // スマホ・縦画面：位置をやや上(h * 0.40)にしてパネルと綺麗に並ぶように調整
+          const scale = (w / 1000) * 0.55; 
           model.scale.set(scale);
-          model.position.set(w / 2, h * 0.58);
+          model.position.set(w / 2, h * 0.40);
         }
       };
 
@@ -310,22 +310,8 @@ export default function Home() {
           }}
         />
 
-        {/* ＝ 操作パネル（画面下部・腰付近に配置） ＝ */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: typeof window !== 'undefined' && window.innerWidth < window.innerHeight ? '60px' : '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '92%',
-            maxWidth: '480px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            zIndex: 10,
-          }}
-        >
+        {/* ＝ 操作パネル ＝ */}
+        <div className="control-panel">
           {/* 状態表示 */}
           <div
             style={{
@@ -442,7 +428,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* ＝ ★ 会話履歴モーダル（モーダル表示時のみ出現） ＝ */}
+        {/* ＝ ★ 会話履歴モーダル ＝ */}
         {showHistoryModal && (
           <div
             style={{
@@ -462,7 +448,7 @@ export default function Home() {
             onClick={() => setShowHistoryModal(false)}
           >
             <div
-              onClick={(e) => e.stopPropagation()} // 内側タップで閉じないように保護
+              onClick={(e) => e.stopPropagation()}
               style={{
                 width: '100%',
                 maxWidth: '500px',
@@ -475,7 +461,6 @@ export default function Home() {
                 overflow: 'hidden',
               }}
             >
-              {/* モーダルヘッダー */}
               <div
                 style={{
                   padding: '16px 20px',
@@ -501,7 +486,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* モーダル内容（メッセージ一覧） */}
               <div
                 style={{
                   padding: '16px',
@@ -555,6 +539,30 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* CSSスタイル：スマホ時のみパネルを上に移動 */}
+        <style jsx>{`
+          .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+          }
+
+          /* スマホ等（横幅768px以下）の場合、下から 80px 浮かせる */
+          @media (max-width: 768px) {
+            .control-panel {
+              bottom: 80px;
+            }
+          }
+        `}</style>
       </div>
     </>
   );
