@@ -19,10 +19,62 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
 
-  // 音声再生はお休み中（テキストチャットのみ）
-  const speakText = (text: string) => {
-    console.log("AIの返答:", text);
-    // 今は声を出さないので中身は空でOK！
+  // Azure Speech Service で音声合成して再生する処理（口パク連動版）
+  const speakText = async (text: string) => {
+    try {
+      // 自分で作ったAzure呼び出し用のAPIにテキストを送る
+      const ttsRes = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text }),
+      });
+
+      if (!ttsRes.ok) {
+        throw new Error('音声の取得に失敗しました');
+      }
+
+      const audioBlob = await ttsRes.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      // --- ここから下はVOICEVOXの時と同じ「口パク」の仕組み ---
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaElementSource(audio);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateMouth = () => {
+        if (audio.paused || audio.ended || !modelRef.current) return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        const average = sum / dataArray.length;
+        const volume = Math.min(average / 30, 1.0);
+        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', volume);
+        requestAnimationFrame(updateMouth);
+      };
+
+      audio.onplay = () => {
+        audioContext.resume();
+        updateMouth();
+      };
+
+      audio.onended = () => {
+        if (modelRef.current) {
+          modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
+        }
+        URL.revokeObjectURL(audioUrl); // メモリの掃除
+      };
+
+      audio.play();
+    } catch (error) {
+      console.error('Azure音声エラー:', error);
+    }
   };
 
   // AIのAPI（脳）へメッセージを送る処理
