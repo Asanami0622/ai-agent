@@ -12,13 +12,13 @@ export async function POST(req: Request) {
 
     const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
-    // 💡 ここが超重要！「七海（Nanami）の元気な声（cheerful）」を指定する呪文（SSML）
+  // 💡 Aoiちゃんの声にして、ピッチ（声の高さ）を10%上げてアニメっぽくする呪文
     const ssml = `
-      <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='ja-JP'>
-        <voice name='ja-JP-NanamiNeural'>
-          <mstts:express-as style="cheerful">
+      <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
+        <voice name='ja-JP-AoiNeural'>
+          <prosody pitch="+10%">
             ${text}
-          </mstts:express-as>
+          </prosody>
         </voice>
       </speak>
     `;
