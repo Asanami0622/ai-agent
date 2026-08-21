@@ -4,46 +4,41 @@ export async function POST(req: Request) {
   try {
     const { text } = await req.json();
     const apiKey = process.env.AZURE_SPEECH_KEY;
-    const region = process.env.AZURE_SPEECH_REGION;
+    const region = process.env.AZURE_SPEECH_REGION || 'japanwest';
 
-    if (!apiKey || !region) {
+    if (!apiKey) {
       return NextResponse.json({ error: 'APIキーが設定されていません' }, { status: 500 });
     }
 
-    // Azure APIのエンドポイント
     const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
-    // ★ここで声の種類を設定！（ja-JP-NanamiNeural ＝ 七海ちゃん）
-    const voiceName = "ja-JP-NanamiNeural";
-
-    // 音声合成のリクエスト形式（SSML）
+    // 💡 ここが超重要！「七海（Nanami）の元気な声（cheerful）」を指定する呪文（SSML）
     const ssml = `
-      <speak version='1.0' xml:lang='ja-JP'>
-        <voice xml:lang='ja-JP' xml:gender='Female' name='${voiceName}'>
-          ${text}
+      <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='ja-JP'>
+        <voice name='ja-JP-NanamiNeural'>
+          <mstts:express-as style="cheerful">
+            ${text}
+          </mstts:express-as>
         </voice>
       </speak>
     `;
 
-    // Azureへリクエスト送信
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Ocp-Apim-Subscription-Key': apiKey,
         'Content-Type': 'application/ssml+xml',
         'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
-        'User-Agent': 'HiyoriAgent'
       },
-      body: ssml
+      body: ssml,
     });
 
     if (!response.ok) {
-      throw new Error('音声の生成に失敗しました');
+      throw new Error(`Azure API Error: ${response.status}`);
     }
 
-    // 出来上がった音声データ（MP3）を取得
     const audioBuffer = await response.arrayBuffer();
-
+    
     return new NextResponse(audioBuffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
@@ -51,7 +46,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    console.error("TTS Error:", error);
-    return NextResponse.json({ error: 'エラーが発生しました' }, { status: 500 });
+    console.error('TTSエラー:', error);
+    return NextResponse.json({ error: '音声の生成に失敗しました' }, { status: 500 });
   }
 }
