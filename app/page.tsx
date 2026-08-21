@@ -533,8 +533,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* ＝ ★ 画面向きに完璧対応するスタイル ＝ */}
-      <style jsx>{`
+   {/* ＝ ★ 画面向きに完璧対応するスタイル ＝ */}
+      <style dangerouslySetInnerHTML={{ __html: `
         /* 全画面で共通のスタイル */
         .control-panel {
           position: absolute;
@@ -559,17 +559,17 @@ export default function Home() {
         /* ① 横画面（PCまたはスマホ横持ち）のときの配置 */
         @media (orientation: landscape) {
           .control-panel {
-            bottom: 20px !important; /* 画面の一番下にすっきり収める */
+            bottom: 20px !important;
           }
         }
 
         /* ② 縦画面（スマホ縦持ち）のときだけの配置 */
         @media (orientation: portrait) {
           .control-panel {
-            bottom: 120px !important; /* ★ここを動かすと縦画面のときだけ一式上に上がります */
+            bottom: 120px !important;
           }
         }
-      `}</style>
+      `}} />
     </>
   );
 }
