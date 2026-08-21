@@ -11,14 +11,13 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
   const [inputText, setInputText] = useState('');
-
+  const [currentEmotion, setCurrentEmotion] = useState('normal');
   // ★ 履歴ポップアップ（モーダル）の開閉フラグ
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-
+  const currentEmotionRef = useRef('normal');
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
-
   // Azure Speech Service で音声合成して再生する処理（口パク連動版）
   const speakText = async (text: string) => {
     try {
@@ -75,7 +74,7 @@ export default function Home() {
     }
   };
 
-  // AIのAPI（脳）へメッセージを送る処理
+  // ★ 変更2：AIのAPI（脳）へメッセージを送る処理
   const askBrain = async (text: string) => {
     if (!text) return;
     setIsThinking(true);
@@ -89,16 +88,25 @@ export default function Home() {
       });
       const data = await res.json();
 
-      setAiReply(data.reply);
-      setAgentState('お返事完了！');
+      // ★ バックエンドから「返事」と「感情」を受け取る
+      const replyText = data.reply;
+      const emotion = data.emotion || 'normal';
 
-      speakText(data.reply);
+      setAiReply(replyText);
+      setCurrentEmotion(emotion); // 感情を記憶
+      setAgentState(`お返事完了！(感情: ${emotion})`); // わかりやすく画面にも表示
+
+      speakText(replyText);
 
       setHistory((prev) => [
         ...prev,
         { role: 'user', text: text },
-        { role: 'model', text: data.reply },
+        { role: 'model', text: replyText },
       ]);
+
+      // ★ Live2Dの表情を切り替える関数を呼び出す！
+      changeExpression(emotion);
+
     } catch (error) {
       console.error(error);
       setAiReply('うまくお返事できなかったみたい…');
@@ -107,7 +115,12 @@ export default function Home() {
       setIsThinking(false);
     }
   };
-
+// ★ 追加3：感情に合わせてLive2Dのパラメータを動かす処理
+  // ★ 変更：感情の記憶を書き換えるだけにする
+  const changeExpression = (emotion: string) => {
+    setCurrentEmotion(emotion);       // 画面表示用
+    currentEmotionRef.current = emotion; // Live2Dループ用
+  };
   // テキストメッセージを送信する処理
   const handleTextSubmit = async () => {
     if (!inputText.trim() || isThinking) return;
@@ -222,6 +235,46 @@ export default function Home() {
 
       app.stage.addChild(model as any);
       modelRef.current = model;
+      // ★調査用：モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する！
+     console.log('モデルのパラメータ一覧:', (model.internalModel.coreModel as any)._parameterIds);
+      // ★ ひよりちゃん専用の表情制御ループ
+     // ★ 表情制御ループ（自動モーションに負けない強力上書き版）
+      const applyEmotionLoop = () => {
+        if (modelRef.current) {
+          const coreModel = modelRef.current.internalModel.coreModel;
+          const emotion = currentEmotionRef.current;
+
+          // 1. まず基本の真顔・リセット
+          coreModel.setParameterValueById('ParamCheek', 0);
+          coreModel.setParameterValueById('ParamEyeLSmile', 0);
+          coreModel.setParameterValueById('ParamEyeRSmile', 0);
+          coreModel.setParameterValueById('ParamMouthForm', 0);
+          coreModel.setParameterValueById('ParamEyeLOpen', 1.0);
+          coreModel.setParameterValueById('ParamEyeROpen', 1.0);
+          coreModel.setParameterValueById('ParamBrowLAngle', 0);
+          coreModel.setParameterValueById('ParamBrowRAngle', 0);
+
+          // 2. 感情に合わせて強制上書き！
+          if (emotion === 'happy') {
+            coreModel.setParameterValueById('ParamCheek', 1.0);
+            coreModel.setParameterValueById('ParamEyeLSmile', 1.0);
+            coreModel.setParameterValueById('ParamEyeRSmile', 1.0);
+            coreModel.setParameterValueById('ParamMouthForm', 1.0);
+          } else if (emotion === 'sad') {
+            coreModel.setParameterValueById('ParamEyeLOpen', 0.5); // じっと見つめるような少し細めた目
+            coreModel.setParameterValueById('ParamEyeROpen', 0.5);
+            coreModel.setParameterValueById('ParamMouthForm', -0.5); // 不満げな口
+          } else if (emotion === 'angry') {
+            coreModel.setParameterValueById('ParamCheek', 0.5);
+            coreModel.setParameterValueById('ParamBrowLAngle', -1.0);
+            coreModel.setParameterValueById('ParamBrowRAngle', -1.0);
+            coreModel.setParameterValueById('ParamMouthForm', -1.0); // 怒り口
+          }
+        }
+      };
+    // 優先度を明示的に最後に指定して、モデルの内部処理の直後に必ず上書きするようにする
+      app.ticker.add(applyEmotionLoop, undefined, PIXI.UPDATE_PRIORITY.LOW);
+      applyEmotionLoop(); // ループ開始！
     } catch (error) {
       console.error('Live2Dの表示エラー:', error);
       alert('Live2Dの読み込みに失敗しました。');
