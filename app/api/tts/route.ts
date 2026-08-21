@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const ssml = `
       <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
         <voice name='ja-JP-AoiNeural'>
-          <prosody pitch="+10%">
+          <prosody pitch="-5%">
             ${text}
           </prosody>
         </voice>
