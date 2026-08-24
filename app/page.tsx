@@ -37,6 +37,10 @@ export default function Home() {
 
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
+      // ★追加：ここで強制的にオーディオコンテキストを復帰させる
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       const source = audioContext.createMediaElementSource(audio);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
