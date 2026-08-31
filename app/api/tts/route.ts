@@ -12,7 +12,6 @@ export async function POST(req: Request) {
 
     const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
-  // 💡 Aoiちゃんの声にして、ピッチ（声の高さ）を10%上げてアニメっぽくする呪文
     const ssml = `
       <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
         <voice name='ja-JP-AoiNeural'>

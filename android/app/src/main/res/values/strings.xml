@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ai-agent</string>
+    <string name="title_activity_main">ai-agent</string>
+    <string name="package_name">com.example.hiyori</string>
+    <string name="custom_url_scheme">com.example.hiyori</string>
+</resources>

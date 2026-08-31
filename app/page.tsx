@@ -12,13 +12,13 @@ export default function Home() {
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
   const [inputText, setInputText] = useState('');
   const [currentEmotion, setCurrentEmotion] = useState('normal');
-  // ★ 履歴ポップアップ（モーダル）の開閉フラグ
+  // 履歴ポップアップ（モーダル）の開閉フラグ
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const currentEmotionRef = useRef('normal');
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
-  // Azure Speech Service で音声合成して再生する処理（口パク連動版）
+  // Azure Speech Service で音声合成して再生する処理
   const speakText = async (text: string) => {
     try {
       const ttsRes = await fetch('/api/tts', {
@@ -37,7 +37,7 @@ export default function Home() {
 
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
-      // ★追加：ここで強制的にオーディオコンテキストを復帰させる
+      // ここで強制的にオーディオコンテキストを復帰させる
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
       }
@@ -78,7 +78,7 @@ export default function Home() {
     }
   };
 
-  // ★ 変更2：AIのAPI（脳）へメッセージを送る処理
+  //AIのAPI（脳）へメッセージを送る処理
   const askBrain = async (text: string) => {
     if (!text) return;
     setIsThinking(true);
@@ -92,7 +92,7 @@ export default function Home() {
       });
       const data = await res.json();
 
-      // ★ バックエンドから「返事」と「感情」を受け取る
+      // 「返事」と「感情」を受け取る
       const replyText = data.reply;
       const emotion = data.emotion || 'normal';
 
@@ -108,7 +108,7 @@ export default function Home() {
         { role: 'model', text: replyText },
       ]);
 
-      // ★ Live2Dの表情を切り替える関数を呼び出す！
+      // live2Dの表情を切り替える関数を呼び出す
       changeExpression(emotion);
 
     } catch (error) {
@@ -119,8 +119,8 @@ export default function Home() {
       setIsThinking(false);
     }
   };
-// ★ 追加3：感情に合わせてLive2Dのパラメータを動かす処理
-  // ★ 変更：感情の記憶を書き換えるだけにする
+// 感情に合わせてLive2Dのパラメータを動かす処理
+  // 感情の記憶を書き換えるだけにする
   const changeExpression = (emotion: string) => {
     setCurrentEmotion(emotion);       // 画面表示用
     currentEmotionRef.current = emotion; // Live2Dループ用
@@ -239,16 +239,16 @@ export default function Home() {
 
       app.stage.addChild(model as any);
       modelRef.current = model;
-      // ★調査用：モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する！
+      // モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する
      console.log('モデルのパラメータ一覧:', (model.internalModel.coreModel as any)._parameterIds);
-      // ★ ひよりちゃん専用の表情制御ループ
-     // ★ 表情制御ループ（自動モーションに負けない強力上書き版）
+      // ひよりちゃん専用の表情制御ループ
+     //  表情制御ループ
       const applyEmotionLoop = () => {
         if (modelRef.current) {
           const coreModel = modelRef.current.internalModel.coreModel;
           const emotion = currentEmotionRef.current;
 
-          // 1. まず基本の真顔・リセット
+          // 基本の真顔
           coreModel.setParameterValueById('ParamCheek', 0);
           coreModel.setParameterValueById('ParamEyeLSmile', 0);
           coreModel.setParameterValueById('ParamEyeRSmile', 0);
@@ -258,7 +258,7 @@ export default function Home() {
           coreModel.setParameterValueById('ParamBrowLAngle', 0);
           coreModel.setParameterValueById('ParamBrowRAngle', 0);
 
-          // 2. 感情に合わせて強制上書き！
+          // 感情に合わせて強制上書き
           if (emotion === 'happy') {
             coreModel.setParameterValueById('ParamCheek', 1.0);
             coreModel.setParameterValueById('ParamEyeLSmile', 1.0);
@@ -278,7 +278,7 @@ export default function Home() {
       };
     // 優先度を明示的に最後に指定して、モデルの内部処理の直後に必ず上書きするようにする
       app.ticker.add(applyEmotionLoop, undefined, PIXI.UPDATE_PRIORITY.LOW);
-      applyEmotionLoop(); // ループ開始！
+      applyEmotionLoop(); // ループ開始
     } catch (error) {
       console.error('Live2Dの表示エラー:', error);
       alert('Live2Dの読み込みに失敗しました。');
