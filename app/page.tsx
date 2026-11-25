@@ -2,14 +2,15 @@
 import { useState, useRef } from 'react';
 import Script from 'next/script';
 import { useConversationHistory } from './hooks/useConversationHistory';
+import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 
 export default function Home() {
   const [agentState, setAgentState] = useState('待機中...');
   const [transcript, setTranscript] = useState('');
   const [aiReply, setAiReply] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  // 音声の聞き取りは専用フックが担当する（本命はAzure、予備はブラウザ認識）
+  const { isRecording, startListening, stopListening } = useSpeechRecognition();
   // 会話履歴は専用フックが保存・復元する（タブを閉じても残る）
   const { history, setHistory, clearHistory } = useConversationHistory({
     onRestore: (restored) => {
@@ -150,61 +151,25 @@ export default function Home() {
   };
 
   // マイクでの音声認識を開始・停止する処理
+  // 聞き取り自体は useSpeechRecognition が担当する（Azure優先、ダメならブラウザ認識）
   const handleTalkButton = () => {
     if (isRecording) {
-      recognitionRef.current?.stop();
+      stopListening();
+      setAgentState('待機中...');
       return;
     }
 
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setTranscript('');
+    setAiReply('');
 
-    if (!SpeechRecognition) {
-      alert('【診断結果】このブラウザは音声認識機能に対応していません！');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'ja-JP';
-      recognition.interimResults = true;
-      recognition.continuous = false;
-
-      recognition.onstart = () => {
-        setIsRecording(true);
-        setAgentState('あなたの声を聞いています...');
-        setTranscript('');
-        setAiReply('');
-      };
-
-      recognition.onresult = (event: any) => {
-        const currentText = event.results[0][0].transcript;
-        setTranscript(currentText);
-        recognitionRef.current.latestTranscript = currentText;
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-        setAgentState('声を聞き取りました！');
-        if (recognitionRef.current?.latestTranscript) {
-          askBrain(recognitionRef.current.latestTranscript);
-          recognitionRef.current.latestTranscript = '';
-        } else {
-          setAgentState('待機中...');
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        setIsRecording(false);
-        setAgentState('エラーが発生しました');
-        console.error('音声認識エラー:', event.error);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (err: any) {
-      alert(`【起動エラー】: ${err.message}`);
-    }
+    startListening({
+      onResult: (text) => {
+        setTranscript(text);
+        askBrain(text);
+      },
+      onStatus: (status) => setAgentState(status),
+      onInterim: (text) => setTranscript(text),
+    });
   };
 
   // Live2D の準備と描画を行う処理

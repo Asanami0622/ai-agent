@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const speechKey = process.env.AZURE_SPEECH_KEY;
-  const speechRegion = process.env.AZURE_SPEECH_REGION;
+  // 地域は /api/tts と同じく、未設定なら japanwest を使う
+  const speechRegion = process.env.AZURE_SPEECH_REGION || 'japanwest';
 
-  if (!speechKey || !speechRegion) {
+  if (!speechKey) {
     return NextResponse.json({ error: '環境変数が設定されていません' }, { status: 500 });
   }
 
