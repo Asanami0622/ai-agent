@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import Script from 'next/script';
+import { useConversationHistory } from './hooks/useConversationHistory';
 
 export default function Home() {
   const [agentState, setAgentState] = useState('待機中...');
@@ -9,7 +10,19 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
+  // 会話履歴は専用フックが保存・復元する（タブを閉じても残る）
+  const { history, setHistory, clearHistory } = useConversationHistory({
+    onRestore: (restored) => {
+      const lastUser = [...restored].reverse().find((item) => item.role === 'user');
+      const lastModel = [...restored].reverse().find((item) => item.role === 'model');
+      if (lastUser) setTranscript(lastUser.text);
+      if (lastModel) setAiReply(lastModel.text);
+    },
+    onClear: () => {
+      setTranscript('');
+      setAiReply('');
+    },
+  });
   const [inputText, setInputText] = useState('');
   const [currentEmotion, setCurrentEmotion] = useState('normal');
   // 履歴ポップアップ（モーダル）の開閉フラグ
@@ -521,6 +534,26 @@ export default function Home() {
                 }}
               >
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>📜 会話履歴</h3>
+                {history.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('会話履歴を全部消しますか？')) clearHistory();
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #e74c3c',
+                      borderRadius: '16px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      color: '#e74c3c',
+                      marginLeft: 'auto',
+                      marginRight: '8px',
+                    }}
+                  >
+                    履歴を消す
+                  </button>
+                )}
                 <button
                   onClick={() => setShowHistoryModal(false)}
                   style={{
