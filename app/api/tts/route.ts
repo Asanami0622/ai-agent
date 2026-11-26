@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
 
+// 感情に合わせて声の高さ（pitch）と速さ（rate）を変える設定
+// normal は今までの声の感じ（pitch -5%）を基準にしている
+const EMOTION_PROSODY: Record<string, { pitch: string; rate: string }> = {
+  happy: { pitch: '+8%', rate: '+6%' },
+  sad: { pitch: '-8%', rate: '-12%' },
+  angry: { pitch: '+3%', rate: '+8%' },
+  normal: { pitch: '-5%', rate: '+0%' },
+};
+
+// SSMLにそのまま埋め込むため、記号をエスケープする
+const escapeXml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
 export async function POST(req: Request) {
   try {
-    const { text } = await req.json();
+    const { text, emotion = 'normal' } = await req.json();
     const apiKey = process.env.AZURE_SPEECH_KEY;
     const region = process.env.AZURE_SPEECH_REGION || 'japanwest';
 
@@ -12,11 +30,13 @@ export async function POST(req: Request) {
 
     const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
+    const prosody = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.normal;
+
     const ssml = `
       <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
         <voice name='ja-JP-AoiNeural'>
-          <prosody pitch="-5%">
-            ${text}
+          <prosody pitch="${prosody.pitch}" rate="${prosody.rate}">
+            ${escapeXml(String(text ?? ''))}
           </prosody>
         </voice>
       </speak>
