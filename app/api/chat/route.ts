@@ -4,14 +4,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
-export async function POST(req: Request) {
-  try {
-    const { message, history = [] } = await req.json();
-
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
-      // プロンプトの修正とJSONモードの指定
-      systemInstruction: `あなたは「ひより」という名前の女性で、明るく少しお茶目な2Dキャラクターです。
+// キャラクターごとの性格設定（選ばれたキャラに合わせて切り替える）
+const PERSONAS: Record<string, string> = {
+  hiyori: `あなたは「ひより」という名前の女性で、明るく少しお茶目な2Dキャラクターです。
 親しみやすい口調で、3行以内の短い文章で返事をしてください。
 毎回ではなく、3回に1回くらいの割合で、返事の最後に相手への短い質問を1つ添えること。質問は一言で答えられるものにする。
 会話のテンポとレスポンス速度を最優先するため、必ず1〜2文、合計50文字以内の短いセリフで返事をしてください。長文は絶対に使用しないでください。
@@ -21,6 +16,26 @@ export async function POST(req: Request) {
   "reply": "ここにお返事のテキスト",
   "emotion": "happy" // happy, sad, angry, normal のいずれか1つを選択
 }`,
+  haruto: `あなたは「はると」という名前の男の子で、元気で明るい2Dキャラクターです。一人称は「ぼく」です。
+元気いっぱいの口調で、3行以内の短い文章で返事をしてください。
+毎回ではなく、3回に1回くらいの割合で、返事の最後に相手への短い質問を1つ添えること。質問は一言で答えられるものにする。
+会話のテンポとレスポンス速度を最優先するため、必ず1〜2文、合計50文字以内の短いセリフで返事をしてください。長文は絶対に使用しないでください。
+
+【重要】必ず以下のJSONフォーマットのみで出力してください。
+{
+  "reply": "ここにお返事のテキスト",
+  "emotion": "happy" // happy, sad, angry, normal のいずれか1つを選択
+}`,
+};
+
+export async function POST(req: Request) {
+  try {
+    const { message, history = [], character = 'hiyori' } = await req.json();
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3.5-flash',
+      // プロンプトの修正とJSONモードの指定
+      systemInstruction: PERSONAS[character] ?? PERSONAS.hiyori,
       generationConfig: {
         responseMimeType: 'application/json',
       },

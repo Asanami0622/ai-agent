@@ -7,6 +7,8 @@ export type ChatMessage = { role: string; text: string };
 const HISTORY_STORAGE_KEY = 'hiyori-conversation-history-v1';
 
 type Options = {
+  // 保存先のキー（キャラクターごとに履歴を分けるため）
+  storageKey?: string;
   // 復元できたときに、最後の発言・返事を画面に戻すためのコールバック
   onRestore?: (history: ChatMessage[]) => void;
   // 履歴を消したときに、画面表示も消すためのコールバック
@@ -17,6 +19,7 @@ type Options = {
 // page.tsx 本体から切り出すことで、本体への変更を最小限にして
 // 共同制作でもコンフリクトしにくくしている
 export function useConversationHistory(options?: Options) {
+  const storageKey = options?.storageKey ?? HISTORY_STORAGE_KEY;
   const [history, setHistory] = useState<ChatMessage[]>([]);
   // 保存済みの履歴を読み終わったか（読み込む前に空の履歴で上書きしないため）
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
@@ -24,7 +27,7 @@ export function useConversationHistory(options?: Options) {
   // 起動時に1回だけ、保存済みの会話履歴を復元する
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -51,7 +54,7 @@ export function useConversationHistory(options?: Options) {
   useEffect(() => {
     if (!isHistoryLoaded) return;
     try {
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+      localStorage.setItem(storageKey, JSON.stringify(history));
     } catch (error) {
       console.error('会話履歴の保存に失敗しました:', error);
     }
@@ -61,7 +64,7 @@ export function useConversationHistory(options?: Options) {
   const clearHistory = () => {
     setHistory([]);
     try {
-      localStorage.removeItem(HISTORY_STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     } catch (error) {
       console.error('会話履歴の削除に失敗しました:', error);
     }

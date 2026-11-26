@@ -3,27 +3,53 @@ import { useState, useRef } from 'react';
 import Script from 'next/script';
 import { useConversationHistory } from './hooks/useConversationHistory';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
+import { CHARACTERS, type CharacterId } from './characters';
 
 export default function Home() {
   const [agentState, setAgentState] = useState('待機中...');
   const [transcript, setTranscript] = useState('');
   const [aiReply, setAiReply] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  // 選択中のキャラクター（設定は app/characters.ts に集約）
+  const [characterId, setCharacterId] = useState<CharacterId>('hiyori');
+  const character = CHARACTERS[characterId];
+  const characterRef = useRef(CHARACTERS.hiyori);
   // 音声の聞き取りは専用フックが担当する（本命はAzure、予備はブラウザ認識）
   const { isRecording, startListening, stopListening } = useSpeechRecognition();
+  // 復元した履歴を画面表示に戻す処理（両キャラ共通）
+  const applyRestoredHistory = (restored: { role: string; text: string }[]) => {
+    const lastUser = [...restored].reverse().find((item) => item.role === 'user');
+    const lastModel = [...restored].reverse().find((item) => item.role === 'model');
+    if (lastUser) setTranscript(lastUser.text);
+    if (lastModel) setAiReply(lastModel.text);
+  };
   // 会話履歴は専用フックが保存・復元する（タブを閉じても残る）
-  const { history, setHistory, clearHistory } = useConversationHistory({
+  // キャラクターごとに保存先を分けて、それぞれの会話を覚えるようにする
+  const hiyoriHistory = useConversationHistory({
     onRestore: (restored) => {
-      const lastUser = [...restored].reverse().find((item) => item.role === 'user');
-      const lastModel = [...restored].reverse().find((item) => item.role === 'model');
-      if (lastUser) setTranscript(lastUser.text);
-      if (lastModel) setAiReply(lastModel.text);
+      if (characterRef.current.id === 'hiyori') applyRestoredHistory(restored);
     },
     onClear: () => {
-      setTranscript('');
-      setAiReply('');
+      if (characterRef.current.id === 'hiyori') {
+        setTranscript('');
+        setAiReply('');
+      }
     },
   });
+  const harutoHistory = useConversationHistory({
+    storageKey: 'haruto-conversation-history-v1',
+    onRestore: (restored) => {
+      if (characterRef.current.id === 'haruto') applyRestoredHistory(restored);
+    },
+    onClear: () => {
+      if (characterRef.current.id === 'haruto') {
+        setTranscript('');
+        setAiReply('');
+      }
+    },
+  });
+  const { history, setHistory, clearHistory } =
+    characterId === 'hiyori' ? hiyoriHistory : harutoHistory;
   const [inputText, setInputText] = useState('');
   const [currentEmotion, setCurrentEmotion] = useState('normal');
   // 履歴ポップアップ（モーダル）の開閉フラグ
@@ -36,13 +62,16 @@ export default function Home() {
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
+  const appRef = useRef<any>(null);
+  const resizeRef = useRef<(() => void) | null>(null);
+  const loadModelRef = useRef<((id: CharacterId) => Promise<void>) | null>(null);
   // Azure Speech Service で音声合成して再生する処理
   const speakText = async (text: string, emotion: string = 'normal') => {
     try {
       const ttsRes = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text, emotion: emotion }),
+        body: JSON.stringify({ text: text, emotion: emotion, character: characterRef.current.id }),
       });
 
       if (!ttsRes.ok) {
@@ -74,7 +103,7 @@ export default function Home() {
         for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
         const average = sum / dataArray.length;
         const volume = Math.min(average / 30, 1.0);
-        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', volume);
+        modelRef.current.internalModel.coreModel.setParameterValueById(characterRef.current.mouthOpenId, volume);
         requestAnimationFrame(updateMouth);
       };
 
@@ -85,7 +114,7 @@ export default function Home() {
 
       audio.onended = () => {
         if (modelRef.current) {
-          modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
+          modelRef.current.internalModel.coreModel.setParameterValueById(characterRef.current.mouthOpenId, 0);
         }
         URL.revokeObjectURL(audioUrl);
       };
@@ -106,7 +135,7 @@ export default function Home() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: history }),
+        body: JSON.stringify({ message: text, history: history, character: characterRef.current.id }),
       });
       const data = await res.json();
 
@@ -143,16 +172,10 @@ export default function Home() {
     setCurrentEmotion(emotion);       // 画面表示用
     currentEmotionRef.current = emotion; // Live2Dループ用
   };
-  // ひよりちゃんをタップしたときの反応
-  // 会話とは別扱いにする（履歴には入れない）。セリフは固定文からランダムで、声も出す
-  const TAP_REACTIONS = [
-    { text: 'えへへ、くすぐったいよ', emotion: 'happy' },
-    { text: 'なあに？呼んだ？', emotion: 'happy' },
-    { text: 'わっ！びっくりしたぁ', emotion: 'normal' },
-    { text: 'もっとお話ししようね', emotion: 'happy' },
-    { text: 'ふふ、触られちゃった', emotion: 'happy' },
-  ];
+  // キャラクターをタップしたときの反応
+  // 会話とは別扱いにする（履歴には入れない）。セリフはキャラ設定の固定文からランダムで、声も出す
   const handleModelTap = () => {
+    const TAP_REACTIONS = characterRef.current.tapReactions;
     const now = Date.now();
     if (now - lastTapAtRef.current < 2000) return; // 連続タップは2秒あける
     lastTapAtRef.current = now;
@@ -223,12 +246,79 @@ export default function Home() {
     });
   };
 
-  // Live2D の準備と描画を行う処理
+  // 指定キャラクターのモデルを読み込んで画面に出す処理（切り替え時にも使う）
+  const loadModel = async (id: CharacterId) => {
+    const app = appRef.current;
+    if (!app) return;
+    const config = CHARACTERS[id];
+    const { Live2DModel } = await import('pixi-live2d-display/cubism4');
+
+    // 前のモデルがあれば片付ける
+    if (modelRef.current) {
+      try {
+        app.stage.removeChild(modelRef.current);
+        modelRef.current.destroy();
+      } catch {
+        // 片付けに失敗しても次の読み込みは続ける
+      }
+      modelRef.current = null;
+    }
+
+    const model = await Live2DModel.from(config.modelPath);
+    model.anchor.set(0.5, 0.5);
+
+    const resizeModel = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const isLandscape = w > h;
+      if (isLandscape) {
+        const scale = (h / 1000) * 0.40 * config.scaleAdjust;
+        model.scale.set(scale);
+        model.position.set(w / 2, h * 0.75);
+      } else {
+        const scale = (w / 1000) * 0.60 * config.scaleAdjust;
+        model.scale.set(scale);
+        model.position.set(w / 2, h * 0.58);
+      }
+    };
+    resizeRef.current = resizeModel;
+    resizeModel();
+
+    app.stage.addChild(model as any);
+    modelRef.current = model;
+    // タップ反応: Live2D標準の当たり判定（hit）が使える場合はそちらで拾う
+    try {
+      (model as any).interactive = true;
+      model.on('hit', () => tapHandlerRef.current());
+    } catch {
+      // hitが使えないモデルでは下の座標判定に任せる
+    }
+    // モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する
+    console.log('モデルのパラメータ一覧:', (model.internalModel.coreModel as any)._parameterIds);
+  };
+  // 切り替えボタン（描画側）から最新の読み込み処理を呼べるようにrefへ入れておく
+  loadModelRef.current = loadModel;
+
+  // キャラクター切り替え処理
+  const switchCharacter = (id: CharacterId) => {
+    if (id === characterRef.current.id) return;
+    characterRef.current = CHARACTERS[id];
+    setCharacterId(id);
+    setTranscript('');
+    setAiReply('');
+    changeExpression('normal');
+    setAgentState('待機中...');
+    // 切り替えたキャラとの最後の会話を表示に戻す
+    const target = id === 'hiyori' ? hiyoriHistory.history : harutoHistory.history;
+    if (target.length > 0) applyRestoredHistory(target);
+    loadModelRef.current?.(id);
+  };
+
+  // Live2D の準備と描画を行う処理（初回のみ: 土台を作って最初のモデルを読み込む）
   const handleLive2DLoad = async () => {
     try {
       const PIXI = await import('pixi.js');
       (window as any).PIXI = PIXI;
-      const { Live2DModel } = await import('pixi-live2d-display/cubism4');
 
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -241,41 +331,12 @@ export default function Home() {
         height: height,
         resizeTo: window,
       });
+      appRef.current = app;
 
-      const model = await Live2DModel.from('/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json');
+      window.addEventListener('resize', () => resizeRef.current?.());
 
-      model.anchor.set(0.5, 0.5);
-
-      const resizeModel = () => {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-
-        const isLandscape = w > h;
-
-        if (isLandscape) {
-          const scale = (h / 1000) * 0.40; 
-          model.scale.set(scale);
-          model.position.set(w / 2, h * 0.75);
-        } else {
-          const scale = (w / 1000) * 0.60; 
-          model.scale.set(scale);
-          model.position.set(w / 2, h * 0.58);
-        }
-      };
-
-      resizeModel();
-      window.addEventListener('resize', resizeModel);
-
-      app.stage.addChild(model as any);
-      modelRef.current = model;
-      // タップ反応: Live2D標準の当たり判定（hit）が使える場合はそちらで拾う
-      try {
-        (model as any).interactive = true;
-        model.on('hit', () => tapHandlerRef.current());
-      } catch {
-        // hitが使えない環境では下の座標判定に任せる
-      }
-      // 予備: キャンバスへのタップ位置がモデルの表示範囲内なら反応する
+      // 予備のタップ判定: キャンバスへのタップ位置がモデルの表示範囲内なら反応する
+      // （HitAreasが無いモデルでもタップ反応が効くようにするためのもの）
       canvasRef.current?.addEventListener('pointerdown', (event) => {
         if (!modelRef.current) return;
         const bounds = modelRef.current.getBounds();
@@ -290,46 +351,29 @@ export default function Home() {
           tapHandlerRef.current();
         }
       });
-      // モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する
-     console.log('モデルのパラメータ一覧:', (model.internalModel.coreModel as any)._parameterIds);
-      // ひよりちゃん専用の表情制御ループ
-     //  表情制御ループ
+
+      // 表情制御ループ: キャラ設定の対応表に沿って、毎フレーム感情パラメータを上書きする
       const applyEmotionLoop = () => {
-        if (modelRef.current) {
-          const coreModel = modelRef.current.internalModel.coreModel;
-          const emotion = currentEmotionRef.current;
+        if (!modelRef.current) return;
+        const coreModel = modelRef.current.internalModel.coreModel;
+        const config = characterRef.current;
+        const emotion = currentEmotionRef.current;
 
-          // 基本の真顔
-          coreModel.setParameterValueById('ParamCheek', 0);
-          coreModel.setParameterValueById('ParamEyeLSmile', 0);
-          coreModel.setParameterValueById('ParamEyeRSmile', 0);
-          coreModel.setParameterValueById('ParamMouthForm', 0);
-          coreModel.setParameterValueById('ParamEyeLOpen', 1.0);
-          coreModel.setParameterValueById('ParamEyeROpen', 1.0);
-          coreModel.setParameterValueById('ParamBrowLAngle', 0);
-          coreModel.setParameterValueById('ParamBrowRAngle', 0);
-
-          // 感情に合わせて強制上書き
-          if (emotion === 'happy') {
-            coreModel.setParameterValueById('ParamCheek', 1.0);
-            coreModel.setParameterValueById('ParamEyeLSmile', 1.0);
-            coreModel.setParameterValueById('ParamEyeRSmile', 1.0);
-            coreModel.setParameterValueById('ParamMouthForm', 1.0);
-          } else if (emotion === 'sad') {
-            coreModel.setParameterValueById('ParamEyeLOpen', 0.5); // じっと見つめるような少し細めた目
-            coreModel.setParameterValueById('ParamEyeROpen', 0.5);
-            coreModel.setParameterValueById('ParamMouthForm', -0.5); // 不満げな口
-          } else if (emotion === 'angry') {
-            coreModel.setParameterValueById('ParamCheek', 0.5);
-            coreModel.setParameterValueById('ParamBrowLAngle', -1.0);
-            coreModel.setParameterValueById('ParamBrowRAngle', -1.0);
-            coreModel.setParameterValueById('ParamMouthForm', -1.0); // 怒り口
+        // 基本の真顔に戻す
+        for (const [paramId, value] of Object.entries(config.baseParams)) {
+          coreModel.setParameterValueById(paramId, value);
+        }
+        // 感情に合わせて上書きする
+        if (emotion === 'happy' || emotion === 'sad' || emotion === 'angry') {
+          for (const [paramId, value] of Object.entries(config.emotionParams[emotion])) {
+            coreModel.setParameterValueById(paramId, value);
           }
         }
       };
-    // 優先度を明示的に最後に指定して、モデルの内部処理の直後に必ず上書きするようにする
+      // 優先度を明示的に最後に指定して、モデルの内部処理の直後に必ず上書きするようにする
       app.ticker.add(applyEmotionLoop, undefined, PIXI.UPDATE_PRIORITY.LOW);
-      applyEmotionLoop(); // ループ開始
+
+      await loadModelRef.current?.(characterRef.current.id);
     } catch (error) {
       console.error('Live2Dの表示エラー:', error);
       alert('Live2Dの読み込みに失敗しました。');
@@ -369,6 +413,39 @@ export default function Home() {
             zIndex: -1,
           }}
         />
+
+        {/* キャラクター切り替えボタン */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            display: 'flex',
+            gap: '8px',
+            zIndex: 20,
+          }}
+        >
+          {(['hiyori', 'haruto'] as CharacterId[]).map((id) => (
+            <button
+              key={id}
+              onClick={() => switchCharacter(id)}
+              style={{
+                backgroundColor: characterId === id ? '#1abc9c' : 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(5px)',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                color: characterId === id ? '#fff' : '#333',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                cursor: 'pointer',
+              }}
+            >
+              {CHARACTERS[id].displayName}
+            </button>
+          ))}
+        </div>
 
         {/* 履歴表示ボタン */}
         <button
@@ -462,7 +539,7 @@ export default function Home() {
             }}
           >
             <p style={{ margin: 0, fontSize: '11px', color: '#16a085', fontWeight: 'bold' }}>
-              ひよりちゃんの返事：
+              {character.replyLabel}
             </p>
             <p style={{ margin: '2px 0 0 0', fontSize: '14px', lineHeight: '1.3', fontWeight: 'bold' }}>
               {aiReply || '（AIのお返事）'}
@@ -633,7 +710,7 @@ export default function Home() {
                         }}
                       >
                         <span style={{ fontSize: '11px', color: '#888', marginBottom: '2px' }}>
-                          {isUser ? 'あなた' : 'ひよりちゃん'}
+                          {isUser ? 'あなた' : character.displayName}
                         </span>
                         <div
                           style={{
