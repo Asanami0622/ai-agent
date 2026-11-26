@@ -29,6 +29,10 @@ export default function Home() {
   // 履歴ポップアップ（モーダル）の開閉フラグ
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const currentEmotionRef = useRef('normal');
+  // タップ反応用: 連続タップの抑制と、直前のセリフの繰り返し回避
+  const lastTapAtRef = useRef(0);
+  const lastTapIndexRef = useRef(-1);
+  const tapEmotionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Live2D用のパーツ（キャンバスとモデル操作リモコン）
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
@@ -139,6 +143,53 @@ export default function Home() {
     setCurrentEmotion(emotion);       // 画面表示用
     currentEmotionRef.current = emotion; // Live2Dループ用
   };
+  // ひよりちゃんをタップしたときの反応
+  // 会話とは別扱いにする（履歴には入れない）。セリフは固定文からランダムで、声も出す
+  const TAP_REACTIONS = [
+    { text: 'えへへ、くすぐったいよ', emotion: 'happy' },
+    { text: 'なあに？呼んだ？', emotion: 'happy' },
+    { text: 'わっ！びっくりしたぁ', emotion: 'normal' },
+    { text: 'もっとお話ししようね', emotion: 'happy' },
+    { text: 'ふふ、触られちゃった', emotion: 'happy' },
+  ];
+  const handleModelTap = () => {
+    const now = Date.now();
+    if (now - lastTapAtRef.current < 2000) return; // 連続タップは2秒あける
+    lastTapAtRef.current = now;
+
+    // 直前と違うセリフを選ぶ
+    let index = Math.floor(Math.random() * TAP_REACTIONS.length);
+    if (index === lastTapIndexRef.current) {
+      index = (index + 1) % TAP_REACTIONS.length;
+    }
+    lastTapIndexRef.current = index;
+    const reaction = TAP_REACTIONS[index];
+
+    setAiReply(reaction.text);
+    setAgentState('タップされた！');
+    changeExpression(reaction.emotion);
+
+    // モデル側にもTapモーションが用意されているので再生する（失敗しても無視）
+    try {
+      modelRef.current?.motion('Tap');
+    } catch {
+      // モーションが無い環境では表情と声だけでも反応する
+    }
+
+    speakText(reaction.text);
+
+    // しばらくしたら表情を通常に戻す（その間に会話が始まっていたら戻さない）
+    if (tapEmotionTimerRef.current) clearTimeout(tapEmotionTimerRef.current);
+    tapEmotionTimerRef.current = setTimeout(() => {
+      if (currentEmotionRef.current === reaction.emotion) {
+        changeExpression('normal');
+        setAgentState('待機中...');
+      }
+    }, 4000);
+  };
+  // Live2D読み込み側（初回のみ実行）から最新のタップ処理を呼べるようにrefへ入れておく
+  const tapHandlerRef = useRef(handleModelTap);
+  tapHandlerRef.current = handleModelTap;
   // テキストメッセージを送信する処理
   const handleTextSubmit = async () => {
     if (!inputText.trim() || isThinking) return;
@@ -200,8 +251,23 @@ export default function Home() {
         const h = window.innerHeight;
 
         const isLandscape = w > h;
+        // タブレット判定: 短辺が600以上あるとスマホ向けの計算では合わない
+        // （長辺が1400を超えるものはPCとして扱う）
+        const isTablet = Math.min(w, h) >= 600 && Math.max(w, h) <= 1400;
 
-        if (isLandscape) {
+        if (isTablet) {
+          // タブレット専用: 向きではなく画面の高さを基準に大きさを決め、
+          // 下の操作パネルに顔が隠れないよう少し上に配置する
+          if (isLandscape) {
+            const scale = (h / 1000) * 0.48;
+            model.scale.set(scale);
+            model.position.set(w / 2, h * 0.62);
+          } else {
+            const scale = (h / 1000) * 0.42;
+            model.scale.set(scale);
+            model.position.set(w / 2, h * 0.52);
+          }
+        } else if (isLandscape) {
           const scale = (h / 1000) * 0.40; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
@@ -210,6 +276,23 @@ export default function Home() {
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.58);
         }
+
+        // 実寸での補正: 計算上の配置だと画面によって頭が上端からはみ出すため、
+        // モデルの実際の表示範囲を見て「頭が切れない」位置・大きさに直す
+        // （下半身が操作パネル裏に隠れるのは想定通りなので、下ははみ出してよい）
+        let bounds = model.getBounds();
+        const maxHeight = h * 1.02;
+        if (bounds.height > maxHeight) {
+          model.scale.set(model.scale.x * (maxHeight / bounds.height));
+          bounds = model.getBounds();
+        }
+        const topMargin = 8;
+        if (bounds.y < topMargin) {
+          model.position.y += topMargin - bounds.y;
+          bounds = model.getBounds();
+        }
+        // 横方向も実寸の中心に合わせる
+        model.position.x += w / 2 - (bounds.x + bounds.width / 2);
       };
 
       resizeModel();
@@ -217,6 +300,28 @@ export default function Home() {
 
       app.stage.addChild(model as any);
       modelRef.current = model;
+      // タップ反応: Live2D標準の当たり判定（hit）が使える場合はそちらで拾う
+      try {
+        (model as any).interactive = true;
+        model.on('hit', () => tapHandlerRef.current());
+      } catch {
+        // hitが使えない環境では下の座標判定に任せる
+      }
+      // 予備: キャンバスへのタップ位置がモデルの表示範囲内なら反応する
+      canvasRef.current?.addEventListener('pointerdown', (event) => {
+        if (!modelRef.current) return;
+        const bounds = modelRef.current.getBounds();
+        // 端の透明部分では反応しにくいよう、横幅を少し内側に絞る
+        const marginX = bounds.width * 0.15;
+        if (
+          event.clientX >= bounds.x + marginX &&
+          event.clientX <= bounds.x + bounds.width - marginX &&
+          event.clientY >= bounds.y &&
+          event.clientY <= bounds.y + bounds.height
+        ) {
+          tapHandlerRef.current();
+        }
+      });
       // モデルが持っているパラメータのIDを全部ブラウザのコンソールに表示する
      console.log('モデルのパラメータ一覧:', (model.internalModel.coreModel as any)._parameterIds);
       // ひよりちゃん専用の表情制御ループ
@@ -323,7 +428,7 @@ export default function Home() {
           📜 会話履歴 ({history.length / 2}件)
         </button>
 
-        {/* Live2D キャンバス */}
+        {/* Live2D キャンバス（タップ反応のためタップを受け取る。操作パネルは上の層にあるので邪魔しない） */}
         <canvas
           ref={canvasRef}
           style={{
@@ -332,7 +437,7 @@ export default function Home() {
             left: 0,
             width: '100%',
             height: '100%',
-            pointerEvents: 'none',
+            pointerEvents: 'auto',
             zIndex: 1,
           }}
         />
@@ -622,6 +727,16 @@ export default function Home() {
         @media (orientation: portrait) {
           .control-panel {
             bottom: 120px !important;
+          }
+        }
+
+        /* ③ タブレット（短辺600px以上）のときの配置 */
+        /* 縦持ちで下から120px浮く指定や、スマホ前提の幅480pxでは合わないため上書きする */
+        @media (min-width: 600px) and (max-width: 1400px) {
+          .control-panel {
+            width: 88%;
+            max-width: 600px;
+            bottom: 24px !important;
           }
         }
       `}} />
