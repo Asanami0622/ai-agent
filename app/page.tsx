@@ -251,23 +251,8 @@ export default function Home() {
         const h = window.innerHeight;
 
         const isLandscape = w > h;
-        // タブレット判定: 短辺が600以上あるとスマホ向けの計算では合わない
-        // （長辺が1400を超えるものはPCとして扱う）
-        const isTablet = Math.min(w, h) >= 600 && Math.max(w, h) <= 1400;
 
-        if (isTablet) {
-          // タブレット専用: 向きではなく画面の高さを基準に大きさを決め、
-          // 下の操作パネルに顔が隠れないよう少し上に配置する
-          if (isLandscape) {
-            const scale = (h / 1000) * 0.48;
-            model.scale.set(scale);
-            model.position.set(w / 2, h * 0.62);
-          } else {
-            const scale = (h / 1000) * 0.42;
-            model.scale.set(scale);
-            model.position.set(w / 2, h * 0.52);
-          }
-        } else if (isLandscape) {
+        if (isLandscape) {
           const scale = (h / 1000) * 0.40; 
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.75);
@@ -276,23 +261,6 @@ export default function Home() {
           model.scale.set(scale);
           model.position.set(w / 2, h * 0.58);
         }
-
-        // 実寸での補正: 計算上の配置だと画面によって頭が上端からはみ出すため、
-        // モデルの実際の表示範囲を見て「頭が切れない」位置・大きさに直す
-        // （下半身が操作パネル裏に隠れるのは想定通りなので、下ははみ出してよい）
-        let bounds = model.getBounds();
-        const maxHeight = h * 1.02;
-        if (bounds.height > maxHeight) {
-          model.scale.set(model.scale.x * (maxHeight / bounds.height));
-          bounds = model.getBounds();
-        }
-        const topMargin = 8;
-        if (bounds.y < topMargin) {
-          model.position.y += topMargin - bounds.y;
-          bounds = model.getBounds();
-        }
-        // 横方向も実寸の中心に合わせる
-        model.position.x += w / 2 - (bounds.x + bounds.width / 2);
       };
 
       resizeModel();
@@ -727,16 +695,6 @@ export default function Home() {
         @media (orientation: portrait) {
           .control-panel {
             bottom: 120px !important;
-          }
-        }
-
-        /* ③ タブレット（短辺600px以上）のときの配置 */
-        /* 縦持ちで下から120px浮く指定や、スマホ前提の幅480pxでは合わないため上書きする */
-        @media (min-width: 600px) and (max-width: 1400px) {
-          .control-panel {
-            width: 88%;
-            max-width: 600px;
-            bottom: 24px !important;
           }
         }
       `}} />
