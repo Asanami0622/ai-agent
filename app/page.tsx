@@ -37,12 +37,12 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modelRef = useRef<any>(null);
   // Azure Speech Service で音声合成して再生する処理
-  const speakText = async (text: string) => {
+  const speakText = async (text: string, emotion: string = 'normal') => {
     try {
       const ttsRes = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text }),
+        body: JSON.stringify({ text: text, emotion: emotion }),
       });
 
       if (!ttsRes.ok) {
@@ -118,7 +118,7 @@ export default function Home() {
       setCurrentEmotion(emotion); // 感情を記憶
       setAgentState(`お返事完了！(感情: ${emotion})`); // わかりやすく画面にも表示
 
-      speakText(replyText);
+      speakText(replyText, emotion);
 
       setHistory((prev) => [
         ...prev,
@@ -176,7 +176,7 @@ export default function Home() {
       // モーションが無い環境では表情と声だけでも反応する
     }
 
-    speakText(reaction.text);
+    speakText(reaction.text, reaction.emotion);
 
     // しばらくしたら表情を通常に戻す（その間に会話が始まっていたら戻さない）
     if (tapEmotionTimerRef.current) clearTimeout(tapEmotionTimerRef.current);
