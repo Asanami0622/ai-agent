@@ -18,9 +18,16 @@ const escapeXml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
+// キャラクターごとの声（ひよりは女性ボイス、はるとは若い男性ボイス）
+const CHARACTER_VOICES: Record<string, string> = {
+  hiyori: 'ja-JP-AoiNeural',
+  haruto: 'ja-JP-KeitaNeural',
+};
+
 export async function POST(req: Request) {
   try {
-    const { text, emotion = 'normal' } = await req.json();
+    const { text, emotion = 'normal', character = 'hiyori' } = await req.json();
+    const voiceName = CHARACTER_VOICES[character] ?? CHARACTER_VOICES.hiyori;
     const apiKey = process.env.AZURE_SPEECH_KEY;
     const region = process.env.AZURE_SPEECH_REGION || 'japanwest';
 
@@ -34,7 +41,7 @@ export async function POST(req: Request) {
 
     const ssml = `
       <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
-        <voice name='ja-JP-AoiNeural'>
+        <voice name='${voiceName}'>
           <prosody pitch="${prosody.pitch}" rate="${prosody.rate}">
             ${escapeXml(String(text ?? ''))}
           </prosody>
