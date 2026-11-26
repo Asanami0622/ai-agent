@@ -1,0 +1,88 @@
+diff --git a/app/page.tsx b/app/page.tsx
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -251,23 +251,8 @@
+         const h = window.innerHeight;
+ 
+         const isLandscape = w > h;
+-        // タブレット判定: 短辺が600以上あるとスマホ向けの計算では合わない
+-        // （長辺が1400を超えるものはPCとして扱う）
+-        const isTablet = Math.min(w, h) >= 600 && Math.max(w, h) <= 1400;
+-
+-        if (isTablet) {
+-          // タブレット専用: 向きではなく画面の高さを基準に大きさを決め、
+-          // 下の操作パネルに顔が隠れないよう少し上に配置する
+-          if (isLandscape) {
+-            const scale = (h / 1000) * 0.48;
+-            model.scale.set(scale);
+-            model.position.set(w / 2, h * 0.62);
+-          } else {
+-            const scale = (h / 1000) * 0.42;
+-            model.scale.set(scale);
+-            model.position.set(w / 2, h * 0.52);
+-          }
+-        } else if (isLandscape) {
++
++        if (isLandscape) {
+           const scale = (h / 1000) * 0.40; 
+           model.scale.set(scale);
+           model.position.set(w / 2, h * 0.75);
+@@ -276,28 +261,6 @@
+           model.scale.set(scale);
+           model.position.set(w / 2, h * 0.58);
+         }
+-
+-        // 実寸での補正: 計算上の配置だと画面によって頭が上端からはみ出すため、
+-        // モデルの実際の表示範囲を見て「頭が切れない」位置・大きさに直す
+-        let bounds = model.getBounds();
+-        // 縦向き（スマホ・タブレット縦）では、全身が画面の高さに収まる大きさに合わせる
+-        // 頭の上と足の下に少しだけ余白を残す
+-        // 横向きで幅が広い画面（PC・タブレット横）では、パネルを右側に寄せる分、
+-        // 全身が画面の高さに収まる大きさにして左側のスペースに全身を表示する
+-        const isWideLandscape = isLandscape && w >= 900;
+-        if ((!isLandscape || isWideLandscape) && bounds.height > 0) {
+-          const targetHeight = h - 16;
+-          model.scale.set(model.scale.x * (targetHeight / bounds.height));
+-          bounds = model.getBounds();
+-        }
+-        const topMargin = 8;
+-        if (bounds.y < topMargin) {
+-          model.position.y += topMargin - bounds.y;
+-          bounds = model.getBounds();
+-        }
+-        // 横方向の中心: 広い横向きでは右側のパネル分を除いたスペースの中心、それ以外は画面の中心
+-        const centerX = isWideLandscape ? (w - 488) / 2 : w / 2;
+-        model.position.x += centerX - (bounds.x + bounds.width / 2);
+       };
+ 
+       resizeModel();
+@@ -734,29 +697,6 @@
+             bottom: 120px !important;
+           }
+         }
+-
+-        /* ③ タブレット（短辺600px以上）のときの配置 */
+-        /* 縦持ちで下から120px浮く指定や、スマホ前提の幅480pxでは合わないため上書きする */
+-        @media (min-width: 600px) and (max-width: 1400px) {
+-          .control-panel {
+-            width: 88%;
+-            max-width: 600px;
+-            bottom: 24px !important;
+-          }
+-        }
+-
+-        /* ④ 横向きで幅が広い画面（PC・タブレット横）ではパネルを右側に寄せる */
+-        /* キャラを左側に全身表示するため、下中央のパネルと重ならないようにする */
+-        @media (orientation: landscape) and (min-width: 900px) {
+-          .control-panel {
+-            left: auto;
+-            right: 24px;
+-            transform: none;
+-            width: 440px;
+-            max-width: 440px;
+-            bottom: 24px !important;
+-          }
+-        }
+       `}} />
+     </>
+   );
