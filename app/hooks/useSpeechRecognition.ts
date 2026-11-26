@@ -10,6 +10,10 @@ type StartOptions = {
   onInterim?: (text: string) => void;
 };
 
+// 聞き取りが返ってこないまま固まらないための制限時間
+const AZURE_TIMEOUT_MS = 20000;
+const WEB_SPEECH_TIMEOUT_MS = 15000;
+
 // 音声の「聞き取り」だけを担当するフック
 // 本命は Azure Speech（ブラウザの種類に依存しないため）
 // Azure が使えない環境では、従来の Web Speech API に自動で切り替える
@@ -52,6 +56,32 @@ export function useSpeechRecognition() {
       recognition.continuous = false;
       webRecognitionRef.current = recognition;
 
+      // 制限時間を過ぎても終わらなければ、固まったとみなして止める
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        try {
+          recognition.stop();
+        } catch {
+          // 無視する
+        }
+        webRecognitionRef.current = null;
+        reject(new Error('音声認識がタイムアウトしました'));
+      }, WEB_SPEECH_TIMEOUT_MS);
+      const finishResolve = (value: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(value);
+      };
+      const finishReject = (reason: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        reject(reason);
+      };
+
       let latestTranscript = '';
 
       recognition.onresult = (event: any) => {
@@ -63,15 +93,15 @@ export function useSpeechRecognition() {
       recognition.onend = () => {
         webRecognitionRef.current = null;
         if (latestTranscript) {
-          resolve(latestTranscript);
+          finishResolve(latestTranscript);
         } else {
-          reject(new Error('声を聞き取れませんでした'));
+          finishReject(new Error('声を聞き取れませんでした'));
         }
       };
 
       recognition.onerror = (event: any) => {
         webRecognitionRef.current = null;
-        reject(new Error(`音声認識エラー: ${event.error || '不明'}`));
+        finishReject(new Error(`音声認識エラー: ${event.error || '不明'}`));
       };
 
       recognition.start();
@@ -100,9 +130,16 @@ export function useSpeechRecognition() {
     azureRecognizerRef.current = recognizer;
 
     try {
-      const result = await new Promise<any>((resolve, reject) => {
-        recognizer.recognizeOnceAsync(resolve, reject);
-      });
+      // 結果もエラーも返らないまま固まる端末があるため、制限時間を付ける
+      // 時間切れの場合は例外になり、ブラウザ認識へのフォールバックに進む
+      const result = await Promise.race([
+        new Promise<any>((resolve, reject) => {
+          recognizer.recognizeOnceAsync(resolve, reject);
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Azure音声認識がタイムアウトしました')), AZURE_TIMEOUT_MS)
+        ),
+      ]);
 
       if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech && result.text) {
         return result.text as string;
@@ -146,7 +183,13 @@ export function useSpeechRecognition() {
       if (cancelledRef.current) return;
       console.error('音声認識エラー:', error);
       options.onStatus('エラーが発生しました');
-      alert('音声を聞き取れませんでした。マイクの許可と周りの静かさを確認してもう一度試してください。');
+      // iPhone版Chrome(CriOS)は音声認識が使えないことが実機テストで分かっているため、専用の案内を出す
+      const isIPhoneChrome = /CriOS/.test(navigator.userAgent);
+      if (isIPhoneChrome) {
+        alert('iPhone版Chromeでは音声認識が使えません。Safariでこのページを開いて試してください。');
+      } else {
+        alert('音声を聞き取れませんでした。マイクの許可と周りの静かさを確認してもう一度試してください。');
+      }
     } finally {
       if (!cancelledRef.current) {
         setIsRecording(false);
