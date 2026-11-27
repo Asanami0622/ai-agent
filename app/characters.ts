@@ -14,6 +14,8 @@ export interface CharacterConfig {
   replyLabel: string;
   // Live2Dモデル（public配下のパス）
   modelPath: string;
+  // 背景画像（public配下のパス）キャラごとに部屋を変える
+  backgroundPath: string;
   // 大きさの補正（ひより=1.0基準。実機で見ながら調整する）
   scaleAdjust: number;
   // 縦位置の補正（画面の高さに対する割合。マイナスで上に上がる）
@@ -34,6 +36,7 @@ export const CHARACTERS: Record<CharacterId, CharacterConfig> = {
     displayName: 'ひよりちゃん',
     replyLabel: 'ひよりちゃんの返事：',
     modelPath: '/hiyori_ja/hiyori_pro/runtime/hiyori_pro_t11.model3.json',
+    backgroundPath: '/o1080060814180422667.jpg',
     scaleAdjust: 1.0,
     mouthOpenId: 'ParamMouthOpenY',
     baseParams: {
@@ -79,6 +82,7 @@ export const CHARACTERS: Record<CharacterId, CharacterConfig> = {
     replyLabel: 'はるとくんの返事：',
     yAdjust: -0.15,
     modelPath: '/haruto/runtime/haruto.model3.json',
+    backgroundPath: '/haruto-room.jpg',
     scaleAdjust: 1.6,
     mouthOpenId: 'PARAM_MOUTH_OPEN_Y',
     baseParams: {
