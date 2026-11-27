@@ -387,8 +387,11 @@ export default function Home() {
           }
         }
       };
-      // 優先度を明示的に最後に指定して、モデルの内部処理の直後に必ず上書きするようにする
-      app.ticker.add(applyEmotionLoop, undefined, PIXI.UPDATE_PRIORITY.LOW);
+      // モデルの更新は app.ticker ではなく PIXI.Ticker.shared 側で動いている。
+      // 別々の時計だと実行順が安定せず、モーションが触るパラメータ（涙など）が
+      // 表情ループの上書きに負けてしまう。同じ Ticker.shared に LOW 優先度で
+      // 登録することで、モーション再生の後に必ず上書きできるようにする
+      PIXI.Ticker.shared.add(applyEmotionLoop, undefined, PIXI.UPDATE_PRIORITY.LOW);
 
       await loadModelRef.current?.(characterRef.current.id);
     } catch (error) {
