@@ -1,0 +1,13 @@
+diff --git a/app/api/tts/route.ts b/app/api/tts/route.ts
+index 1093e87..bdae9da 100644
+--- a/app/api/tts/route.ts
++++ b/app/api/tts/route.ts
+@@ -22,7 +22,7 @@ const escapeXml = (value: string) =>
+ // pitchShift は声の高さの底上げ（%）。はるとは男の子らしく高めにする
+ const CHARACTER_VOICES: Record<string, { voice: string; pitchShift: number }> = {
+   hiyori: { voice: 'ja-JP-AoiNeural', pitchShift: 0 },
+-  haruto: { voice: 'ja-JP-KeitaNeural', pitchShift: 25 },
++  haruto: { voice: 'ja-JP-NanamiNeural', pitchShift: 0 },
+ };
+ 
+ export async function POST(req: Request) {
