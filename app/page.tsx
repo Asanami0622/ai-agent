@@ -65,6 +65,8 @@ export default function Home() {
   const appRef = useRef<any>(null);
   const resizeRef = useRef<(() => void) | null>(null);
   const loadModelRef = useRef<((id: CharacterId) => Promise<void>) | null>(null);
+  // モデル読み込みの世代番号（高速切り替え時の「合体」防止）
+  const loadSeqRef = useRef(0);
   // Azure Speech Service で音声合成して再生する処理
   const speakText = async (text: string, emotion: string = 'normal') => {
     try {
@@ -251,6 +253,9 @@ export default function Home() {
     const app = appRef.current;
     if (!app) return;
     const config = CHARACTERS[id];
+    // 読み込みの世代番号。高速で切り替えると複数の読み込みが同時に走るので、
+    // 「最後に始めた読み込み」以外は、終わっても画面に出さずに捨てる
+    const loadSeq = ++loadSeqRef.current;
     const { Live2DModel } = await import('pixi-live2d-display/cubism4');
 
     // 前のモデルがあれば片付ける
@@ -265,6 +270,18 @@ export default function Home() {
     }
 
     const model = await Live2DModel.from(config.modelPath);
+
+    // 読み込んでいる間に別の切り替えが始まっていたら、このモデルはもう古い。
+    // 画面に出すと前のキャラと重なって「合体」してしまうので、出さずに片付ける
+    if (loadSeq !== loadSeqRef.current) {
+      try {
+        model.destroy();
+      } catch {
+        // 片付けに失敗しても表示はしない
+      }
+      return;
+    }
+
     model.anchor.set(0.5, 0.5);
 
     const resizeModel = () => {
