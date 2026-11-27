@@ -19,15 +19,17 @@ const escapeXml = (value: string) =>
     .replace(/'/g, '&apos;');
 
 // キャラクターごとの声（ひよりは女性ボイス、はるとは若い男性ボイス）
-const CHARACTER_VOICES: Record<string, string> = {
-  hiyori: 'ja-JP-AoiNeural',
-  haruto: 'ja-JP-KeitaNeural',
+// pitchShift は声の高さの底上げ（%）。はるとは男の子らしく高めにする
+const CHARACTER_VOICES: Record<string, { voice: string; pitchShift: number }> = {
+  hiyori: { voice: 'ja-JP-AoiNeural', pitchShift: 0 },
+  haruto: { voice: 'ja-JP-KeitaNeural', pitchShift: 25 },
 };
 
 export async function POST(req: Request) {
   try {
     const { text, emotion = 'normal', character = 'hiyori' } = await req.json();
-    const voiceName = CHARACTER_VOICES[character] ?? CHARACTER_VOICES.hiyori;
+    const voiceConfig = CHARACTER_VOICES[character] ?? CHARACTER_VOICES.hiyori;
+    const voiceName = voiceConfig.voice;
     const apiKey = process.env.AZURE_SPEECH_KEY;
     const region = process.env.AZURE_SPEECH_REGION || 'japanwest';
 
@@ -39,10 +41,14 @@ export async function POST(req: Request) {
 
     const prosody = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.normal;
 
+    // 感情ぶんの上下に、キャラごとの底上げを足して最終的な声の高さを決める
+    const pitchValue = parseInt(prosody.pitch, 10) + voiceConfig.pitchShift;
+    const pitch = `${pitchValue >= 0 ? '+' : ''}${pitchValue}%`;
+
     const ssml = `
       <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ja-JP'>
         <voice name='${voiceName}'>
-          <prosody pitch="${prosody.pitch}" rate="${prosody.rate}">
+          <prosody pitch="${pitch}" rate="${prosody.rate}">
             ${escapeXml(String(text ?? ''))}
           </prosody>
         </voice>
