@@ -22,7 +22,7 @@ const escapeXml = (value: string) =>
 // pitchShift は声の高さの底上げ（%）。はるとは男の子らしく高めにする
 const CHARACTER_VOICES: Record<string, { voice: string; pitchShift: number }> = {
   hiyori: { voice: 'ja-JP-AoiNeural', pitchShift: 0 },
-  haruto: { voice: 'ja-JP-KeitaNeural', pitchShift: 25 },
+  haruto: { voice: 'ja-JP-KeitaNeural', pitchShift: 40 },
 };
 
 export async function POST(req: Request) {
