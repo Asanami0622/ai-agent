@@ -424,7 +424,7 @@ export default function Home() {
             left: 0,
             width: '100%',
             height: '100%',
-            backgroundImage: 'url("/o1080060814180422667.jpg")',
+            backgroundImage: `url("${character.backgroundPath}")`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             zIndex: -1,
