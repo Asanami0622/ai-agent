@@ -16,6 +16,8 @@ export interface CharacterConfig {
   modelPath: string;
   // 大きさの補正（ひより=1.0基準。実機で見ながら調整する）
   scaleAdjust: number;
+  // 縦位置の補正（画面の高さに対する割合。マイナスで上に上がる）
+  yAdjust?: number;
   // 口パクで動かすパラメータID（モデルごとに名前が違う）
   mouthOpenId: string;
   // 感情パラメータ: base は毎フレーム最初に適用する初期値、
@@ -75,8 +77,9 @@ export const CHARACTERS: Record<CharacterId, CharacterConfig> = {
     id: 'haruto',
     displayName: 'はるとくん',
     replyLabel: 'はるとくんの返事：',
+    yAdjust: -0.15,
     modelPath: '/haruto/runtime/haruto.model3.json',
-    scaleAdjust: 1.0,
+    scaleAdjust: 1.6,
     mouthOpenId: 'PARAM_MOUTH_OPEN_Y',
     baseParams: {
       PARAM_EYE_L_SMILE: 0,
