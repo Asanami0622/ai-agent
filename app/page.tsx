@@ -274,11 +274,11 @@ export default function Home() {
       if (isLandscape) {
         const scale = (h / 1000) * 0.40 * config.scaleAdjust;
         model.scale.set(scale);
-        model.position.set(w / 2, h * 0.75);
+        model.position.set(w / 2, h * (0.75 + (config.yAdjust ?? 0)));
       } else {
         const scale = (w / 1000) * 0.60 * config.scaleAdjust;
         model.scale.set(scale);
-        model.position.set(w / 2, h * 0.58);
+        model.position.set(w / 2, h * (0.58 + (config.yAdjust ?? 0)));
       }
     };
     resizeRef.current = resizeModel;
